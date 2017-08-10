@@ -2,6 +2,7 @@ resolver: lts-9.0
 packages:
 - ./ogma-api
 - ./ogma
-extra-deps: []
+extra-deps:
+- generic-arbitrary-0.1.0
 flags: {}
 extra-package-dbs: []
