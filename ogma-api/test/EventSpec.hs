@@ -16,6 +16,14 @@ instance Arbitrary TimeInterval where
                     , exact <$> arbitrary
                     ]
 
+instance Arbitrary Point where
+  arbitrary = Point <$> arbitrary <*> arbitrary
+
+instance Arbitrary Surface where
+  arbitrary = oneof [ circle <$> arbitrary <*> arbitrary
+                    , polygon <$> arbitrary <*> arbitrary <*> arbitrary <*> arbitrary
+                    ]
+
 spec :: Spec
 spec = do
   describe "overlap" $ do
@@ -24,3 +32,10 @@ spec = do
 
     it "should be symmetric" $ property $
       \x y -> (overlap x y == overlap y x)
+
+  describe "collide" $ do
+    it "should be reflexive" $ property $
+      \x -> (collide x x == True)
+
+    it "should be symmetric" $ property $
+      \x y -> (collide x y == collide y x)

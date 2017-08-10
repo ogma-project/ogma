@@ -9,6 +9,13 @@ module Web.Ogma.Api
   , exact
   , union
   , overlap
+  , Point(..)
+  , Surface
+  , circle
+  , triangle
+  , rectangle
+  , polygon
+  , collide
   ) where
 
 newtype AbsoluteTime = AbsoluteTime { unAbsT ::  Int }
@@ -68,3 +75,51 @@ overlap t (Union int int') = (overlap t int) || (overlap t int')
 -- overlap is a symmetric relation, so we can simplify its implementation by
 -- omitting half of the pattern matching cases and revert the arguments
 overlap x y = overlap y x
+
+data Point = Point Double Double
+  deriving (Show)
+
+data Surface = Polygon Point Point Point [Point]
+             | Circle Point Double
+  deriving (Show)
+
+circle :: Point -> Double -> Surface
+circle p r = Circle p (abs r)
+
+polygon :: Point -> Point -> Point -> [Point] -> Surface
+polygon = Polygon
+
+triangle :: Point -> Point -> Point -> Surface
+triangle p1 p2 p3 = polygon p1 p2 p3 []
+
+rectangle :: Point -> Point -> Surface
+rectangle (Point x y) (Point x' y') = polygon (Point (min x x') (min y y'))
+                                              (Point (min x x') (max y y'))
+                                              (Point (max x x') (max y y'))
+                                              [Point (max x x') (min y y')]
+
+data Box = Box Point Point
+
+type Title = String
+type Description = String
+
+collide :: Surface -> Surface -> Bool
+collide s1 s2 = boxCollide (surfaceToBox s1) (surfaceToBox s2)
+  where
+    boxCollide :: Box -> Box -> Bool
+    boxCollide (Box (Point xmin1 ymin1) (Point xmax1 ymax1))
+               (Box (Point xmin2 ymin2) (Point xmax2 ymax2)) =
+      not ((xmin2 > xmax1) ||
+           (xmin1 > xmax2) ||
+           (ymin2 > ymax1) ||
+           (ymin1 > ymax2))
+
+surfaceToBox :: Surface -> Box
+surfaceToBox (Circle (Point x y) r) =
+  Box (Point (x - r) (y - r)) (Point (x + r) (y + r))
+surfaceToBox (Polygon p p' p'' r) = foldl expand (Box p p) (p':p'':r)
+  where
+    expand :: Box -> Point -> Box
+    expand (Box (Point minx miny) (Point maxx maxy)) (Point x y) =
+      Box (Point (min minx x) (min miny y))
+          (Point (max maxx x) (max maxy y))
