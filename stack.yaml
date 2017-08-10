@@ -1,0 +1,7 @@
+resolver: lts-9.0
+packages:
+- ./ogma-api
+- ./ogma
+extra-deps: []
+flags: {}
+extra-package-dbs: []
