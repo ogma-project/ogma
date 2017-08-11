@@ -16,6 +16,7 @@ module Web.Ogma.Api
   , Point(..)
   , Surface
   , circle
+  , point
   , triangle
   , rectangle
   , polygon
@@ -127,6 +128,9 @@ data Surface = Polygon Point Point Point [Point]
 
 circle :: Point -> Double -> Surface
 circle p r = Circle p (abs r)
+
+point :: Point -> Surface
+point p = circle p 0.0
 
 polygon :: Point -> Point -> Point -> [Point] -> Surface
 polygon = Polygon
