@@ -21,6 +21,8 @@ module Web.Ogma.Api
   , rectangle
   , polygon
   , collide
+  , Event(..)
+  , filterEvents
   ) where
 
 import           Data.Void
@@ -169,3 +171,11 @@ surfaceToBox (Polygon p p' p'' r) = foldl expand (Box p p) (p':p'':r)
     expand (Box (Point minx miny) (Point maxx maxy)) (Point x y) =
       Box (Point (min minx x) (min miny y))
           (Point (max maxx x) (max maxy y))
+
+data Event = Event Title Description TimeInterval Surface
+
+selectEvent :: TimeInterval -> Surface -> Event -> Bool
+selectEvent int' surface' (Event _ _ int surface) = (overlap int int') && collide surface surface'
+
+filterEvents :: TimeInterval -> Surface -> [Event] -> [Event]
+filterEvents int surface = filter $ selectEvent int surface
