@@ -1,3 +1,6 @@
+{-# LANGUAGE GeneralizedNewtypeDeriving #-}
+{-# LANGUAGE StandaloneDeriving         #-}
+
 module Web.Ogma.Api
   ( AbsoluteTime
   , absToInt
@@ -27,7 +30,9 @@ import qualified Text.Megaparsec.Char.Lexer as L
 type Parser = Parsec Void String
 
 newtype AbsoluteTime = AbsoluteTime { unAbsT ::  Int }
-  deriving (Eq, Ord)
+  deriving (Eq, Ord, Num, Enum, Real)
+
+deriving instance Integral AbsoluteTime
 
 intToAbs :: Int -> AbsoluteTime
 intToAbs = AbsoluteTime
@@ -55,68 +60,23 @@ readInterval str = parseMaybe parseInterval str
                               <|> parseExact
                               <|> parseUnion) <* space
 
-    parseBoundedTime = do
-      char '['
-      space
-      x <- L.signed space L.decimal
-      space
-      char ';'
-      space
-      y <- L.signed space L.decimal
-      space
-      char ']'
+    parseBoundedTime =
+      boundedTime <$> (char '[' *> space *> L.signed space L.decimal <* space)
+                  <*> (char ';' *> space *> L.signed space L.decimal <* space <* char ']')
 
-      pure $ boundedTime (intToAbs x) (intToAbs y)
+    parseBefore =
+      before <$> (char '[' *> space *> string "inf" *> space *> char ';' *> space *> L.signed space L.decimal
+                    <* space <* char ']')
 
-    parseBefore = do
-      char '['
-      space
-      string "inf"
-      space
-      char ';'
-      space
-      x <- L.signed space L.decimal
-      space
-      char ']'
+    parseAfter =
+      after <$> (char '[' *> space *> L.signed space L.decimal <* space <* char ';' <* space <* string "inf"
+                    <* space <* char ']')
 
-      pure $ before (intToAbs x)
+    parseExact = exact <$> (string "at" *> space *> L.signed space L.decimal)
 
-    parseAfter = do
-      char '['
-      space
-      x <- L.signed space L.decimal
-      space
-      char ';'
-      space
-      string "inf"
-      space
-      char ']'
-
-      pure $ after (intToAbs x)
-
-    parseExact = do
-      string "at"
-      space
-      x <- L.signed space L.decimal
-
-      pure $ exact (intToAbs x)
-
-    parseUnion = do
-      char '('
-      space
-      int <- parseInterval
-      space
-      char ')'
-      space
-      char 'U'
-      space
-      char '('
-      space
-      int' <- parseInterval
-      space
-      char ')'
-
-      pure $ union int int'
+    parseUnion =
+      union <$> (char '(' *> space *> parseInterval <* space <* char ')' <* space <* char 'U' <* space)
+            <*> (char '(' *> space *> parseInterval <* space <* char ')')
 
 boundedTime :: AbsoluteTime -> AbsoluteTime -> TimeInterval
 boundedTime x y
