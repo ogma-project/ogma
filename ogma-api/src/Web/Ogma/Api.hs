@@ -9,6 +9,7 @@ module Web.Ogma.Api
   , exact
   , union
   , overlap
+  , readInterval
   , Point(..)
   , Surface
   , circle
@@ -17,6 +18,13 @@ module Web.Ogma.Api
   , polygon
   , collide
   ) where
+
+import           Data.Void
+import           Text.Megaparsec
+import           Text.Megaparsec.Char
+import qualified Text.Megaparsec.Char.Lexer as L
+
+type Parser = Parsec Void String
 
 newtype AbsoluteTime = AbsoluteTime { unAbsT ::  Int }
   deriving (Eq, Ord)
@@ -35,6 +43,80 @@ data TimeInterval = BoundedTime AbsoluteTime AbsoluteTime
                   | After AbsoluteTime
                   | Union TimeInterval TimeInterval
                   | Exact AbsoluteTime
+  deriving (Eq)
+
+readInterval :: String -> Maybe TimeInterval
+readInterval str = parseMaybe parseInterval str
+  where
+    parseInterval :: Parser TimeInterval
+    parseInterval = space *> (try parseBoundedTime
+                              <|> try parseBefore
+                              <|> try parseAfter
+                              <|> parseExact
+                              <|> parseUnion) <* space
+
+    parseBoundedTime = do
+      char '['
+      space
+      x <- L.signed space L.decimal
+      space
+      char ';'
+      space
+      y <- L.signed space L.decimal
+      space
+      char ']'
+
+      pure $ boundedTime (intToAbs x) (intToAbs y)
+
+    parseBefore = do
+      char '['
+      space
+      string "inf"
+      space
+      char ';'
+      space
+      x <- L.signed space L.decimal
+      space
+      char ']'
+
+      pure $ before (intToAbs x)
+
+    parseAfter = do
+      char '['
+      space
+      x <- L.signed space L.decimal
+      space
+      char ';'
+      space
+      string "inf"
+      space
+      char ']'
+
+      pure $ after (intToAbs x)
+
+    parseExact = do
+      string "at"
+      space
+      x <- L.signed space L.decimal
+
+      pure $ exact (intToAbs x)
+
+    parseUnion = do
+      char '('
+      space
+      int <- parseInterval
+      space
+      char ')'
+      space
+      char 'U'
+      space
+      char '('
+      space
+      int' <- parseInterval
+      space
+      char ')'
+
+      pure $ union int int'
 
 boundedTime :: AbsoluteTime -> AbsoluteTime -> TimeInterval
 boundedTime x y

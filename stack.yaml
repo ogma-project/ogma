@@ -3,6 +3,6 @@ packages:
 - ./ogma-api
 - ./ogma
 extra-deps:
-- generic-arbitrary-0.1.0
+- megaparsec-6.1.0
 flags: {}
 extra-package-dbs: []

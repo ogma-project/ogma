@@ -40,6 +40,10 @@ spec = do
     it "should be symmetric" $ property $
       \a x y -> (overlap a (union x y) == overlap a (union x y))
 
+  describe "readInterval" $ do
+    it "should be the inverse of show" $ property $
+      \x -> (readInterval . show) x == Just x
+
   describe "collide" $ do
     it "should be reflexive" $ property $
       \x -> (collide x x == True)
