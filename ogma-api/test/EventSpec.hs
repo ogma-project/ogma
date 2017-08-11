@@ -33,6 +33,13 @@ spec = do
     it "should be symmetric" $ property $
       \x y -> (overlap x y == overlap y x)
 
+  describe "union" $ do
+    it "should be associative" $ property $
+      \a x y z -> (overlap a (union x (union y z)) == overlap a (union (union x y) z))
+
+    it "should be symmetric" $ property $
+      \a x y -> (overlap a (union x y) == overlap a (union x y))
+
   describe "collide" $ do
     it "should be reflexive" $ property $
       \x -> (collide x x == True)
