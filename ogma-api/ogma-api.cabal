@@ -21,6 +21,7 @@ library
                      , megaparsec >= 6.1 && < 6.2
                      , aeson >= 1.1 && < 1.2
                      , text >= 1.2 && < 1.3
+                     , http-api-data >= 0.3 && < 0.4
   default-language:    Haskell2010
 
 executable og2purs

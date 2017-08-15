@@ -33,7 +33,8 @@ import           Text.Megaparsec
 import           Text.Megaparsec.Char
 import qualified Text.Megaparsec.Char.Lexer as L
 import           Data.Aeson
-import           Data.Text (unpack)
+import           Data.Text (append, pack, unpack)
+import           Web.HttpApiData
 
 type Parser = Parsec Void String
 
@@ -110,6 +111,15 @@ readInterval str = parseMaybe parseInterval str
       union <$> (char '(' *> space *> parseInterval <* space <* char ')' <* space <* char 'U' <* space)
             <*> (char '(' *> space *> parseInterval <* space <* char ')')
 
+instance ToHttpApiData TimeInterval where
+  toQueryParam = pack . show
+
+instance FromHttpApiData TimeInterval where
+  parseQueryParam txt = case readInterval (unpack txt) of
+    Just x -> Right x
+    _ -> Left $ "couldn't parse an interval from " `append` txt
+
+
 instance ToJSON TimeInterval where
   toJSON txt = String $ fromString (show txt)
 
@@ -159,6 +169,9 @@ instance Show Surface where
           showRest [] = ""
   show (Circle c r) = "circle:" ++ show c ++ "-" ++ show r
 
+instance ToHttpApiData Surface where
+  toQueryParam = pack . show
+
 readSurface :: String -> Maybe Surface
 readSurface str = parseMaybe parseSurface str
   where
@@ -181,6 +194,11 @@ readSurface str = parseMaybe parseSurface str
     parsePoint :: Parser Point
     parsePoint = Point <$> (char '(' *> L.signed space L.float <* char ';')
                        <*> (L.signed space L.float <* char ')')
+
+instance FromHttpApiData Surface where
+  parseQueryParam txt = case readSurface (unpack txt) of
+    Just x -> Right x
+    _ -> Left $ "couldn't parse a surface from " `append` txt
 
 instance ToJSON Surface where
   toJSON (Polygon p p' p'' r) = object [ "polygon" .= toJSON (p:p':p'':r)
