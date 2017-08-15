@@ -52,6 +52,10 @@ spec = do
     it "should be inverse functions of each other" $ property $
       \x -> (fromJSON . toJSON) x == Success (x :: TimeInterval)
 
+  describe "readSurface" $ do
+    it "should be the inverse of show" $ property $
+      \x -> (readSurface . show) x == Just x
+
   describe "collide" $ do
     it "should be reflexive" $ property $
       \x -> (collide x x == True)

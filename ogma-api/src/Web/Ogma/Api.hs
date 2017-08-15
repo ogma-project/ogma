@@ -16,6 +16,7 @@ module Web.Ogma.Api
   , readInterval
   , Point(..)
   , Surface
+  , readSurface
   , circle
   , point
   , triangle
@@ -134,7 +135,10 @@ overlap t (Union int int') = (overlap t int) || (overlap t int')
 overlap x y = overlap y x
 
 data Point = Point Double Double
-  deriving (Show, Eq)
+  deriving (Eq)
+
+instance Show Point where
+  show (Point x y) = "(" ++ show x ++ ";" ++ show y ++ ")"
 
 instance ToJSON Point where
   toJSON (Point x y) = object [ "x" .= x
@@ -146,7 +150,37 @@ instance FromJSON Point where
 
 data Surface = Polygon Point Point Point [Point]
              | Circle Point Double
-  deriving (Show, Eq)
+  deriving (Eq)
+
+instance Show Surface where
+  show (Polygon p p' p'' rest) =
+    "poly:" ++ show p ++ "-" ++ show p' ++ "-" ++ show p'' ++ showRest rest
+    where showRest (x:r) = "-" ++ show x ++ showRest r
+          showRest [] = ""
+  show (Circle c r) = "circle:" ++ show c ++ "-" ++ show r
+
+readSurface :: String -> Maybe Surface
+readSurface str = parseMaybe parseSurface str
+  where
+    parseSurface :: Parser Surface
+    parseSurface = (do string "poly:"
+                       p <- parsePoint
+                       char '-'
+                       p' <- parsePoint
+                       char '-'
+                       p'' <- parsePoint
+                       rest <- many (char '-' *> parsePoint)
+                       pure $ Polygon p p' p'' rest)
+      <|> (do string "circle:"
+              c <- parsePoint
+              char '-'
+              r <- L.float
+
+              pure $ Circle c r)
+
+    parsePoint :: Parser Point
+    parsePoint = Point <$> (char '(' *> L.signed space L.float <* char ';')
+                       <*> (L.signed space L.float <* char ')')
 
 instance ToJSON Surface where
   toJSON (Polygon p p' p'' r) = object [ "polygon" .= toJSON (p:p':p'':r)
