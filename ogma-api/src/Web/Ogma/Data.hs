@@ -2,7 +2,7 @@
 {-# LANGUAGE StandaloneDeriving         #-}
 {-# LANGUAGE OverloadedStrings          #-}
 
-module Web.Ogma.Api
+module Web.Ogma.Data
   ( AbsoluteTime
   , absToInt
   , intToAbs

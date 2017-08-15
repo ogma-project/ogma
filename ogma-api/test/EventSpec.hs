@@ -4,7 +4,7 @@ import           Test.Hspec         (Spec, describe, it)
 import           Test.QuickCheck    (Arbitrary(arbitrary), property, oneof)
 import           Data.Aeson
 
-import           Web.Ogma.Api
+import           Web.Ogma.Data
 
 instance Arbitrary AbsoluteTime where
   arbitrary = intToAbs <$> arbitrary
