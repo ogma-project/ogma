@@ -1,5 +1,6 @@
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE StandaloneDeriving         #-}
+{-# LANGUAGE OverloadedStrings          #-}
 
 module Web.Ogma.Api
   ( AbsoluteTime
@@ -25,15 +26,18 @@ module Web.Ogma.Api
   , filterEvents
   ) where
 
+import           Data.String
 import           Data.Void
 import           Text.Megaparsec
 import           Text.Megaparsec.Char
 import qualified Text.Megaparsec.Char.Lexer as L
+import           Data.Aeson
+import           Data.Text (unpack)
 
 type Parser = Parsec Void String
 
 newtype AbsoluteTime = AbsoluteTime { unAbsT ::  Int }
-  deriving (Eq, Ord, Num, Enum, Real)
+  deriving (Eq, Ord, Num, Enum, Real, FromJSON, ToJSON)
 
 deriving instance Integral AbsoluteTime
 
@@ -52,6 +56,30 @@ data TimeInterval = BoundedTime AbsoluteTime AbsoluteTime
                   | Union TimeInterval TimeInterval
                   | Exact AbsoluteTime
   deriving (Eq)
+
+boundedTime :: AbsoluteTime -> AbsoluteTime -> TimeInterval
+boundedTime x y
+  | x == y = Exact x
+  | otherwise = BoundedTime (min x y) (max x y)
+
+before :: AbsoluteTime -> TimeInterval
+before = Before
+
+after :: AbsoluteTime -> TimeInterval
+after = After
+
+exact :: AbsoluteTime -> TimeInterval
+exact = Exact
+
+union :: TimeInterval -> TimeInterval -> TimeInterval
+union = Union
+
+instance Show TimeInterval where
+  show (BoundedTime begin end) = "[" ++ show begin ++ "; " ++ show end ++ "]"
+  show (After begin) = "[" ++ show begin ++ "; inf]"
+  show (Before end) = "[inf; " ++ show end ++ "]"
+  show (Union int int') = "(" ++ show int ++ ") U (" ++ show int' ++ ")"
+  show (Exact t) = "at " ++ show t
 
 readInterval :: String -> Maybe TimeInterval
 readInterval str = parseMaybe parseInterval str
@@ -81,29 +109,13 @@ readInterval str = parseMaybe parseInterval str
       union <$> (char '(' *> space *> parseInterval <* space <* char ')' <* space <* char 'U' <* space)
             <*> (char '(' *> space *> parseInterval <* space <* char ')')
 
-boundedTime :: AbsoluteTime -> AbsoluteTime -> TimeInterval
-boundedTime x y
-  | x == y = Exact x
-  | otherwise = BoundedTime (min x y) (max x y)
+instance ToJSON TimeInterval where
+  toJSON txt = String $ fromString (show txt)
 
-before :: AbsoluteTime -> TimeInterval
-before = Before
-
-after :: AbsoluteTime -> TimeInterval
-after = After
-
-exact :: AbsoluteTime -> TimeInterval
-exact = Exact
-
-union :: TimeInterval -> TimeInterval -> TimeInterval
-union = Union
-
-instance Show TimeInterval where
-  show (BoundedTime begin end) = "[" ++ show begin ++ "; " ++ show end ++ "]"
-  show (After begin) = "[" ++ show begin ++ "; inf]"
-  show (Before end) = "[inf; " ++ show end ++ "]"
-  show (Union int int') = "(" ++ show int ++ ") U (" ++ show int' ++ ")"
-  show (Exact t) = "at " ++ show t
+instance FromJSON TimeInterval where
+  parseJSON (String txt) = case readInterval (unpack txt) of
+    Just x -> pure x
+    Nothing -> fail "incorrect time interval"
 
 overlap :: TimeInterval -> TimeInterval -> Bool
 overlap (BoundedTime begin end) (BoundedTime begin' end') = begin' < end && begin < end'
@@ -122,11 +134,34 @@ overlap t (Union int int') = (overlap t int) || (overlap t int')
 overlap x y = overlap y x
 
 data Point = Point Double Double
-  deriving (Show)
+  deriving (Show, Eq)
+
+instance ToJSON Point where
+  toJSON (Point x y) = object [ "x" .= x
+                              , "y" .= y
+                              ]
+instance FromJSON Point where
+  parseJSON (Object o) = Point <$> o .: "x"
+                               <*> o .: "y"
 
 data Surface = Polygon Point Point Point [Point]
              | Circle Point Double
-  deriving (Show)
+  deriving (Show, Eq)
+
+instance ToJSON Surface where
+  toJSON (Polygon p p' p'' r) = object [ "polygon" .= toJSON (p:p':p'':r)
+                                       ]
+  toJSON (Circle p r) = object [ "center" .= p
+                               , "radius" .= r
+                               ]
+
+instance FromJSON Surface where
+  parseJSON (Object o) = (do points <- o .: "polygon"
+                             case points of
+                               (p:p':p'':r) -> pure $ Polygon p p' p'' r
+                               _ -> fail "polygon should be made of at least three points")
+                         <|> (Circle <$> o .: "center"
+                                     <*> o .: "radius")
 
 circle :: Point -> Double -> Surface
 circle p r = Circle p (abs r)
@@ -173,6 +208,19 @@ surfaceToBox (Polygon p p' p'' r) = foldl expand (Box p p) (p':p'':r)
           (Point (max maxx x) (max maxy y))
 
 data Event = Event Title Description TimeInterval Surface
+  deriving (Eq, Show)
+
+instance ToJSON Event where
+  toJSON (Event t d int s) = object [ "title" .= t
+                                    , "description" .= d
+                                    , "when" .= int
+                                    , "where" .= s
+                                    ]
+instance FromJSON Event where
+  parseJSON (Object o) = Event <$> o .: "title"
+                               <*> o .: "description"
+                               <*> o .: "when"
+                               <*> o .: "where"
 
 selectEvent :: TimeInterval -> Surface -> Event -> Bool
 selectEvent int' surface' (Event _ _ int surface) = (overlap int int') && collide surface surface'
