@@ -1,7 +1,6 @@
 resolver: lts-9.0
 packages:
-- ./ogma-api
-- ./ogma
+- .
 extra-deps:
 - megaparsec-6.1.0
 flags: {}
