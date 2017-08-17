@@ -3,5 +3,8 @@ packages:
 - .
 extra-deps:
 - megaparsec-6.1.0
-flags: {}
+- ogmarkup-3.1.0
+flags:
+  ogma:
+    server: true
 extra-package-dbs: []

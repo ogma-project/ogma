@@ -41,6 +41,7 @@ executable ogmad
   if flag(server)
     build-depends:     base
                      , ogma
+                     , ogmarkup >= 3.1 && < 4.0
     buildable:         True
   else
     buildable:         False
