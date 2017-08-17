@@ -3,7 +3,10 @@
 {-# LANGUAGE OverloadedStrings          #-}
 
 module Web.Ogma.Data
-  ( AbsoluteTime
+  ( Title
+  , Name
+  , Description
+  , AbsoluteTime
   , absToInt
   , intToAbs
   , TimeInterval
@@ -23,7 +26,7 @@ module Web.Ogma.Data
   , rectangle
   , polygon
   , collide
-  , Event(..)
+  , Location(..)
   , filterEvents
   ) where
 
@@ -33,7 +36,7 @@ import           Text.Megaparsec
 import           Text.Megaparsec.Char
 import qualified Text.Megaparsec.Char.Lexer as L
 import           Data.Aeson
-import           Data.Text (append, pack, unpack)
+import           Data.Text (Text, append, pack, unpack)
 import           Web.HttpApiData
 
 type Parser = Parsec Void String
@@ -235,8 +238,9 @@ rectangle (Point x y) (Point x' y') = polygon (Point (min x x') (min y y'))
 
 data Box = Box Point Point
 
-type Title = String
-type Description = String
+type Title = Text
+type Name = Text
+type Description = Text
 
 collide :: Surface -> Surface -> Bool
 collide s1 s2 = boxCollide (surfaceToBox s1) (surfaceToBox s2)
@@ -259,23 +263,25 @@ surfaceToBox (Polygon p p' p'' r) = foldl expand (Box p p) (p':p'':r)
       Box (Point (min minx x) (min miny y))
           (Point (max maxx x) (max maxy y))
 
-data Event = Event Title Description TimeInterval Surface
+data Location = Location Title Description Surface
   deriving (Eq, Show)
 
-instance ToJSON Event where
-  toJSON (Event t d int s) = object [ "title" .= t
-                                    , "description" .= d
-                                    , "when" .= int
-                                    , "where" .= s
-                                    ]
-instance FromJSON Event where
-  parseJSON (Object o) = Event <$> o .: "title"
-                               <*> o .: "description"
-                               <*> o .: "when"
-                               <*> o .: "where"
+instance ToJSON Location where
+  toJSON (Location n d s) = object [ "name" .= n
+                                   , "description" .= d
+                                   , "surface" .= s
+                                   ]
+instance FromJSON Location where
+  parseJSON (Object o) = Location <$> o .: "name"
+                                  <*> o .: "description"
+                                  <*> o .: "surface"
 
-selectEvent :: TimeInterval -> Surface -> Event -> Bool
-selectEvent int' surface' (Event _ _ int surface) = (overlap int int') && collide surface surface'
+selectEvent :: Maybe TimeInterval -> Maybe Surface -> (a -> TimeInterval) -> (a -> Surface) -> a -> Bool
+selectEvent (Just int') (Just surface') getInt getSurface x = (overlap (getInt x) int') && collide (getSurface x) surface'
+selectEvent Nothing (Just surface') _ getSurface x = collide (getSurface x) surface'
+selectEvent (Just int') Nothing getInt _ x = (overlap (getInt x) int')
+selectEvent Nothing Nothing _ _ x = True
 
-filterEvents :: TimeInterval -> Surface -> [Event] -> [Event]
-filterEvents int surface = filter $ selectEvent int surface
+filterEvents :: Maybe TimeInterval -> Maybe Surface -> (a -> TimeInterval) -> (a -> Surface) -> [a] -> [a]
+filterEvents Nothing Nothing _ _ = id
+filterEvents int surface getInt getSurface = filter $ selectEvent int surface getInt getSurface
