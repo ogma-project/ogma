@@ -1,3 +1,4 @@
+{-# LANGUAGE GADTs #-}
 {-# LANGUAGE DataKinds              #-}
 {-# LANGUAGE FlexibleContexts       #-}
 {-# LANGUAGE FlexibleInstances      #-}
@@ -39,18 +40,21 @@ type FoldableGet x y = QueryParam "fold" Int :> Get x y
 class WeakFunctor f where
   wmap :: (a -> a) -> f a -> f a
 
-class Foldable a where
-  fold :: Int -> a -> a
-  fold _ = id
+class Shrinkable a where
+  shrink :: a -> a
+  shrink = id
 
-instance Foldable Int
-instance Foldable String
-instance Foldable Text
-instance Foldable Bool
+instance Shrinkable Int
+instance Shrinkable String
+instance Shrinkable Text
+instance Shrinkable Bool
 
-class Applicative m => Expendable m a where
+class (Shrinkable a, Applicative m) => Expendable m a where
   expand :: Int -> a -> m a
   expand _ x = pure x
+
+class Fetchable m a where
+  fetch :: Id a -> m a
 
 instance Applicative m => Expendable m Int
 instance Applicative m => Expendable m String
@@ -64,12 +68,17 @@ instance WeakFunctor Entity where
   wmap f (Complete x) = Complete (wmap f x)
   wmap _ x = x
 
-instance (Foldable a) => Foldable (Entity a) where
-  fold _ (IdOnly idx) = IdOnly idx
-  fold x (Complete (Identified idx value)) =
-    if x < 1
-    then (IdOnly idx)
-    else (Complete (Identified idx (fold (x-1) value)))
+instance Shrinkable (Entity a) where
+  shrink (Complete (Identified idx _)) = (IdOnly idx)
+  shrink x = x
+
+instance (Monad m, Expendable m a, Fetchable m a) => Expendable m (Entity a) where
+  expand x y@(IdOnly idx)
+    | x < 1 = pure y
+    | otherwise = (Complete . (Identified idx))  <$> (fetch idx >>= (expand $ x-1))
+  expand x (Complete (Identified idx value))
+    | x < 1 = pure $ IdOnly idx
+    | otherwise = (Complete . (Identified idx)) <$> (expand (x-1) value)
 
 data EntityList a = CompleteList [Identified a]
                   | IdOnlyList [Id a]
@@ -78,14 +87,19 @@ instance WeakFunctor EntityList where
   wmap f (CompleteList x) = CompleteList (wmap f <$> x)
   wmap _ x = x
 
-instance (Foldable a) => Foldable (EntityList a) where
-  fold _ x@(IdOnlyList _) = x
-  fold x y@(CompleteList l) =
-    if x < 1
-    then IdOnlyList (foldI <$> l)
-    else CompleteList (wmap (fold (x-1)) <$> l)
+instance (Shrinkable a) => Shrinkable (EntityList a) where
+  shrink (CompleteList l) = IdOnlyList (foldI <$> l)
     where foldI :: Identified a -> Id a
           foldI (Identified idx _) = idx
+  shrink x = x
+
+instance (Monad m, Expendable m a, Fetchable m a) => Expendable m (EntityList a) where
+  expand x y@(IdOnlyList idxs)
+    | x < 1 = pure y
+    | otherwise = CompleteList <$> ((\idx -> (Identified idx) <$> ((fetch idx) >>= (expand $ x-1))) `mapM` idxs)
+  expand x (CompleteList ids)
+    | x < 1 = IdOnlyList <$> ((\(Identified idx _) ->  pure idx) `mapM` ids)
+    | otherwise = CompleteList <$> ((\(Identified idx value) -> Identified idx <$> expand (x-1) value) `mapM` ids)
 
 instance (ToJSON a, ToJSON (Id a)) => ToJSON (Entity a) where
   toJSON (IdOnly idx) = toJSON idx
