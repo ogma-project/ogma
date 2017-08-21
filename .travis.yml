@@ -36,5 +36,5 @@ script:
 
 after_script:
   - mkdir -p dist/
-  - ln -sf $(find .stack-work/install -type d -name hpc) dist/hpc
+  - cp -r $(find .stack-work/install -type d -name hpc) dist/
   - stack exec hpc-coveralls ogma-test
