@@ -18,7 +18,8 @@ script:
     # test and report test coverage
   - stack exec hpc-coveralls
     # check whether stylish-haskell has been applied
-  - find . '*.hs' -exec stack exec stylish-haskell -- -i {} \;
+  - find . -name '*.hs' -exec stack exec stylish-haskell -- -i {} \;
+  - git status
   - git status | grep "nothing to commit"
     # hlint should return nothing for src dir
   - stack exec hlint -- lint src
