@@ -14,13 +14,13 @@ before_install:
 
 install:
   - stack setup
-  - stack install stylish-haskell hlint hpc-coveralls
+  - stack install stylish-haskell hlint
 
 script:
     # try to build
   - stack build
-    # test and report test coverage
-  - stack exec hpc-coveralls ogma-test
+    # test
+  - stack test --coverage
     # check whether stylish-haskell has been applied
   - find . -name '*.hs' -exec stack exec stylish-haskell -- -i {} \;
   - git status
@@ -33,3 +33,9 @@ script:
   - stack exec hlint -- lint test
     # documentation needs to build
   - stack haddock
+
+after_script:
+  - stack install hpc-coveralls
+  - mkdir -p dist/
+  - ln -sf dist/hpc $(find .stack-work/install -name hpc)
+  - stack exec hpc-coveralls ogma-test
