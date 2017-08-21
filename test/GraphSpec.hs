@@ -1,13 +1,13 @@
-{-# LANGUAGE TypeFamilies #-}
-{-# LANGUAGE FlexibleInstances #-}
-{-# LANGUAGE TypeOperators #-}
+{-# LANGUAGE FlexibleInstances     #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE TypeFamilies          #-}
+{-# LANGUAGE TypeOperators         #-}
 
 module GraphSpec where
 
-import           Test.Hspec              (Spec, describe, it, shouldBe)
-import           Control.Monad.Identity  (Identity(..))
+import           Control.Monad.Identity (Identity (..))
 import           Data.Proxy
+import           Test.Hspec             (Spec, describe, it, shouldBe)
 import           Web.Ogma.Resource
 
 spec :: Spec
@@ -55,7 +55,7 @@ instance Selectable BirthPlace where
   everything _ = SelectBirthPlace
 
   select SelectBirthPlace _ = True
-  select _ _ = False
+  select _ _                = False
 
 relations :: [Edges (Character -: Relation :-> Character)]
 relations = [Edge "Tom" FriendsWith "Max", Edge "Max" WorksFor "Peter", Edge "Max" FriendsWith "Peter"]

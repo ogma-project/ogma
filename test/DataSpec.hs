@@ -1,9 +1,9 @@
 module DataSpec where
 
-import           Test.Hspec         (Spec, describe, it)
-import           Test.QuickCheck    (Arbitrary(arbitrary), property, oneof)
 import           Data.Aeson
-import           Data.Text          (Text, pack)
+import           Data.Text       (Text, pack)
+import           Test.Hspec      (Spec, describe, it)
+import           Test.QuickCheck (Arbitrary (arbitrary), oneof, property)
 
 import           Web.Ogma.Data
 

@@ -1,25 +1,25 @@
-{-# LANGUAGE StandaloneDeriving #-}
-{-# LANGUAGE AllowAmbiguousTypes #-}
-{-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE AllowAmbiguousTypes    #-}
+{-# LANGUAGE DataKinds              #-}
+{-# LANGUAGE FlexibleContexts       #-}
+{-# LANGUAGE FlexibleInstances      #-}
 {-# LANGUAGE FunctionalDependencies #-}
-{-# LANGUAGE GADTs #-}
-{-# LANGUAGE FlexibleInstances #-}
-{-# LANGUAGE DataKinds #-}
-{-# LANGUAGE TypeOperators #-}
-{-# LANGUAGE PolyKinds #-}
-{-# LANGUAGE MultiParamTypeClasses #-}
-{-# LANGUAGE TypeFamilies #-}
-{-# LANGUAGE OverloadedStrings #-}
-{-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE GADTs                  #-}
+{-# LANGUAGE MultiParamTypeClasses  #-}
+{-# LANGUAGE OverloadedStrings      #-}
+{-# LANGUAGE PolyKinds              #-}
+{-# LANGUAGE ScopedTypeVariables    #-}
+{-# LANGUAGE StandaloneDeriving     #-}
+{-# LANGUAGE TypeFamilies           #-}
+{-# LANGUAGE TypeOperators          #-}
 
 module Web.Ogma.Resource where
 
-import Control.Applicative      ((<|>))
-import Control.Monad.Identity
-import Data.Aeson
-import Data.Maybe               (maybe)
-import Data.Proxy               (Proxy(..))
-import Data.Typeable            (Typeable)
+import           Control.Applicative    ((<|>))
+import           Control.Monad.Identity
+import           Data.Aeson
+import           Data.Maybe             (maybe)
+import           Data.Proxy             (Proxy (..))
+import           Data.Typeable          (Typeable)
 
 -- | A typeclass to filter given a dedicated 'Selector'.
 class Selectable e where
@@ -55,7 +55,7 @@ class Graph spec where
 instance (Selectable a, Selectable b) => Selectable (Either a b) where
   data Selector (Either a b) = Prod (Selector a) (Selector b)
 
-  select (Prod f _) (Left x) = select f x
+  select (Prod f _) (Left x)   = select f x
   select (Prod _ f') (Right y) = select f' y
 
   nothing _ = Prod (nothing Proxy) (nothing Proxy)
@@ -71,7 +71,7 @@ instance (Graph s, Graph s') => Graph (s :<>: s') where
 instance (Graph s, Graph s', Selectable (Edges s), Selectable (Edges s')) => Selectable (Edges (s :<>: s')) where
   data Selector (Edges (s :<>: s')) = EProd (Selector (Edges s)) (Selector (Edges s'))
 
-  select (EProd f _) (ELeft x) = select f x
+  select (EProd f _) (ELeft x)   = select f x
   select (EProd _ f') (ERight y) = select f' y
 
   nothing _ = EProd (nothing Proxy) (nothing Proxy)
@@ -133,7 +133,7 @@ instance (Named (a -: e :-> b), FromJSON (Id a), FromJSON (Id b), FromJSON e) =>
     else fail "not the good type"
 
 instance (ToJSON (Edges s), ToJSON (Edges s')) => ToJSON (Edges (s :<>: s')) where
-  toJSON (ELeft x) = toJSON x
+  toJSON (ELeft x)  = toJSON x
   toJSON (ERight y) = toJSON y
 
 instance (FromJSON (Edges s), FromJSON (Edges s')) => FromJSON (Edges (s :<>: s')) where
@@ -145,7 +145,7 @@ instance (Named (a -: e :-> b), Show (Id a), Show (Id b), Show e) => Show (Edges
 
 instance (Show (Edges a), Show (Edges b)) => Show (Edges (a :<>: b)) where
   show (ERight x) = show x
-  show (ELeft x) = show x
+  show (ELeft x)  = show x
 
 deriving instance (Eq (Id a), Eq (Id b), Eq e) => Eq (Edges (a -: e :-> b))
 deriving instance (Eq (Edges s), Eq (Edges s')) => Eq (Edges (s :<>: s'))

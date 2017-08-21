@@ -1,6 +1,6 @@
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
-{-# LANGUAGE StandaloneDeriving         #-}
 {-# LANGUAGE OverloadedStrings          #-}
+{-# LANGUAGE StandaloneDeriving         #-}
 
 module Web.Ogma.Data
   ( Title
@@ -30,13 +30,13 @@ module Web.Ogma.Data
   , filterEvents
   ) where
 
+import           Data.Aeson
 import           Data.String
+import           Data.Text                  (Text, append, pack, unpack)
 import           Data.Void
 import           Text.Megaparsec
 import           Text.Megaparsec.Char
 import qualified Text.Megaparsec.Char.Lexer as L
-import           Data.Aeson
-import           Data.Text (Text, append, pack, unpack)
 import           Web.HttpApiData
 
 type Parser = Parsec Void String
@@ -120,7 +120,7 @@ instance ToHttpApiData TimeInterval where
 instance FromHttpApiData TimeInterval where
   parseQueryParam txt = case readInterval (unpack txt) of
     Just x -> Right x
-    _ -> Left $ "couldn't parse an interval from " `append` txt
+    _      -> Left $ "couldn't parse an interval from " `append` txt
 
 
 instance ToJSON TimeInterval where
@@ -128,7 +128,7 @@ instance ToJSON TimeInterval where
 
 instance FromJSON TimeInterval where
   parseJSON (String txt) = case readInterval (unpack txt) of
-    Just x -> pure x
+    Just x  -> pure x
     Nothing -> fail "incorrect time interval"
 
 overlap :: TimeInterval -> TimeInterval -> Bool
@@ -169,7 +169,7 @@ instance Show Surface where
   show (Polygon p p' p'' rest) =
     "poly:" ++ show p ++ "-" ++ show p' ++ "-" ++ show p'' ++ showRest rest
     where showRest (x:r) = "-" ++ show x ++ showRest r
-          showRest [] = ""
+          showRest []    = ""
   show (Circle c r) = "circle:" ++ show c ++ "-" ++ show r
 
 instance ToHttpApiData Surface where
@@ -201,7 +201,7 @@ readSurface str = parseMaybe parseSurface str
 instance FromHttpApiData Surface where
   parseQueryParam txt = case readSurface (unpack txt) of
     Just x -> Right x
-    _ -> Left $ "couldn't parse a surface from " `append` txt
+    _      -> Left $ "couldn't parse a surface from " `append` txt
 
 instance ToJSON Surface where
   toJSON (Polygon p p' p'' r) = object [ "polygon" .= toJSON (p:p':p'':r)

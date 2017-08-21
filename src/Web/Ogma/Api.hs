@@ -1,20 +1,20 @@
-{-# LANGUAGE GADTs #-}
-{-# LANGUAGE DataKinds              #-}
-{-# LANGUAGE FlexibleContexts       #-}
-{-# LANGUAGE FlexibleInstances      #-}
-{-# LANGUAGE MultiParamTypeClasses  #-}
-{-# LANGUAGE OverloadedStrings      #-}
-{-# LANGUAGE TypeFamilies           #-}
-{-# LANGUAGE TypeOperators          #-}
-{-# LANGUAGE TypeSynonymInstances   #-}
-{-# LANGUAGE UndecidableInstances   #-}
+{-# LANGUAGE DataKinds             #-}
+{-# LANGUAGE FlexibleContexts      #-}
+{-# LANGUAGE FlexibleInstances     #-}
+{-# LANGUAGE GADTs                 #-}
+{-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE OverloadedStrings     #-}
+{-# LANGUAGE TypeFamilies          #-}
+{-# LANGUAGE TypeOperators         #-}
+{-# LANGUAGE TypeSynonymInstances  #-}
+{-# LANGUAGE UndecidableInstances  #-}
 
 module Web.Ogma.Api where
 
-import           Prelude         hiding (Foldable)
-import           Servant.API
-import           Data.Text       (Text)
 import           Data.Aeson
+import           Data.Text     (Text)
+import           Prelude       hiding (Foldable)
+import           Servant.API
 
 import           Web.Ogma.Data
 
@@ -66,11 +66,11 @@ data Entity a = Complete (Identified a)
 
 instance WeakFunctor Entity where
   wmap f (Complete x) = Complete (wmap f x)
-  wmap _ x = x
+  wmap _ x            = x
 
 instance Shrinkable (Entity a) where
   shrink (Complete (Identified idx _)) = (IdOnly idx)
-  shrink x = x
+  shrink x                             = x
 
 instance (Monad m, Expendable m a, Fetchable m a) => Expendable m (Entity a) where
   expand x y@(IdOnly idx)
@@ -85,7 +85,7 @@ data EntityList a = CompleteList [Identified a]
 
 instance WeakFunctor EntityList where
   wmap f (CompleteList x) = CompleteList (wmap f <$> x)
-  wmap _ x = x
+  wmap _ x                = x
 
 instance (Shrinkable a) => Shrinkable (EntityList a) where
   shrink (CompleteList l) = IdOnlyList (foldI <$> l)
@@ -102,7 +102,7 @@ instance (Monad m, Expendable m a, Fetchable m a) => Expendable m (EntityList a)
     | otherwise = CompleteList <$> ((\(Identified idx value) -> Identified idx <$> expand (x-1) value) `mapM` ids)
 
 instance (ToJSON a, ToJSON (Id a)) => ToJSON (Entity a) where
-  toJSON (IdOnly idx) = toJSON idx
+  toJSON (IdOnly idx)  = toJSON idx
   toJSON (Complete ex) = toJSON ex
 
 data Event = Event Title Description TimeInterval (Entity Location)
