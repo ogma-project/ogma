@@ -21,12 +21,33 @@ import Data.Maybe               (maybe)
 import Data.Proxy               (Proxy(..))
 import Data.Typeable            (Typeable)
 
+-- | A typeclass to filter given a dedicated 'Selector'.
 class Selectable e where
+  -- | The 'Selector' is a set of values which can be used to validate or
+  --   discard a 'Selectable' value.
   data Selector e :: *
 
+  -- | Given one 'Selector', says if one 'Selectable' is validated or discarded.
   select     :: Selector e -> e -> Bool
+  -- | The 'Selector' which discards any input values. In other words:
+  --
+  --   prop> select (everything Proxy) e = True
   nothing    :: Proxy e -> Selector e
+  -- | The 'Selector' which validates any input values. In other words:
+  --
+  --   prop> select (nothing Proxy) e = False
+
   everything :: Proxy e -> Selector e
+
+-- TODO: add the following properties
+-- either :: Proxy e -> Selector e -> Selector e -> Bool
+-- both   :: Proxy e -> Selector e -> Selector e -> Bool
+-- With the following properties:
+--   prop> select (either Proxy x y) e = select x e || select y e
+--   prop> select (both Proxy x y) e = select x e && select y e
+
+selects :: (Selectable e) => Selector e -> [e] -> [e]
+selects sel = filter (select sel)
 
 class Graph spec where
   data Edges spec
