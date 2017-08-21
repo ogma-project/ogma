@@ -18,6 +18,8 @@ install:
   - stack install stylish-haskell hlint
 
 script:
+    # and with cabal!
+  - cabal configure --enable-tests --enable-coverage && cabal build && cabal test
     # try to build
   - stack build --coverage
     # test
@@ -34,9 +36,7 @@ script:
   - stack exec hlint -- lint test
     # documentation needs to build
   - stack haddock
-    # and with cabal!
-  - cabal configure --enable-tests --enable-coverage && cabal build && cabal test
 
 after_script:
   - cabal install hpc-coveralls
-  - hpc-coveralls ogma-test
+  - hpc-coveralls ogma-test --exclude-dir=test
