@@ -101,7 +101,7 @@ script:
         cabal sdist
         cabal copy
         cabal install hpc-coveralls
-        hpc-coveralls ogma-test
+        ~/.cabal/bin/hpc-coveralls ogma-test
         SRC_TGZ=$(cabal info . | awk '{print $2;exit}').tar.gz && \
           (cd dist && cabal install --force-reinstalls "$SRC_TGZ")
         ;;
