@@ -34,14 +34,14 @@ instance Arbitrary Location where
 
 spec :: Spec
 spec = do
-  describe "overlap" $
+  describe "overlap" $ do
     it "should be reflexive" $ property $
       \x -> overlap x x
 
     it "should be symmetric" $ property $
       \x y -> (overlap x y == overlap y x)
 
-  describe "union" $
+  describe "union" $ do
     it "should be associative" $ property $
       \a x y z -> (overlap a (x `union` (y `union` z)) == overlap a ((x `union` y) `union` z))
 
@@ -60,7 +60,7 @@ spec = do
     it "should be the inverse of show" $ property $
       \x -> (readSurface . show) x == Just x
 
-  describe "collide" $
+  describe "collide" $ do
     it "should be reflexive" $ property $
       \x -> collide x x
 

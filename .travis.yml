@@ -14,13 +14,19 @@ before_install:
 
 install:
   - stack setup
-  - stack install stylish-haskell hlint
+  - stack install stylish-haskell hlint hpc-coveralls
 
 script:
+    # try to build
   - stack build
-  - stack test
-  - stack haddock
-  - stack exec stylish-haskell -- src
-  - stack exec stylish-haskell -- test
+    # test and report test coverage
+  - stack exec hpc-coveralls
+    # check whether stylish-haskell has been applied
+  - find . '*.hs' -exec stack exec stylish-haskell -- -i {} \;
+  - git status | grep "nothing to commit"
+    # hlint should return nothing for src dir
   - stack exec hlint -- lint src
-  - stack exec hlint -- lint test
+    # hlint should return nothing for app dir
+  - stack exec hlint -- lint app
+    # hlint should return nothing for test dir
+  - stack haddock
