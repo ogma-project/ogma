@@ -35,7 +35,7 @@ script:
     # documentation needs to build
   - stack haddock
     # and with cabal!
-  - cabal configure --enable-tests --enable-library-coverage && cabal build && cabal test
+  - cabal configure --enable-tests --enable-coverage && cabal build && cabal test
 
 after_script:
   - cabal install hpc-coveralls
