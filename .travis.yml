@@ -36,5 +36,7 @@ script:
 
 after_script:
   - mkdir -p dist/hpc/tix/
+  - mkdir -p dist/hpc/mix/
   - cp -r $(find .stack-work/install -name ogma-test.tix -exec dirname {} \;) dist/hpc/tix/
+  - cp -r $(find .stack-work/install -name lib)/*/* dist/hpc/mix
   - stack exec hpc-coveralls -- ogma-test --display-report
