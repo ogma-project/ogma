@@ -1,5 +1,4 @@
 {-# LANGUAGE AllowAmbiguousTypes #-}
-{-# LANGUAGE UndecidableInstances #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE FunctionalDependencies #-}
 {-# LANGUAGE GADTs #-}
@@ -52,7 +51,7 @@ instance (Graph s, Graph s', Selectable (Edges s), Selectable (Edges s')) => Sel
   nothing _ = EProd (nothing Proxy) (nothing Proxy)
   everything _ = EProd (everything Proxy) (everything Proxy)
 
-class (Graph s, Monad m, Selectable (Edges s)) => GraphMonad s m | s -> m where
+class (Graph s, Monad m, Selectable (Edges s)) => GraphMonad s m where
   selectEdges :: Proxy s -> Selector (Edges s) -> m [Edges s]
 
 instance (GraphMonad s m, GraphMonad s' m) => GraphMonad (s :<>: s') m where
