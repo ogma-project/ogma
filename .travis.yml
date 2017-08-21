@@ -14,7 +14,7 @@ before_install:
 
 install:
   - stack setup
-  - stack install stylish-haskell hlint
+  - stack install stylish-haskell hlint hpc-coveralls
 
 script:
     # try to build
@@ -35,7 +35,6 @@ script:
   - stack haddock
 
 after_script:
-  - stack install hpc-coveralls
   - mkdir -p dist/
   - ln -sf dist/hpc $(find .stack-work/install -name hpc)
   - stack exec hpc-coveralls ogma-test
