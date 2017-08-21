@@ -87,7 +87,7 @@ instance Show TimeInterval where
   show (Exact t) = "at " ++ show t
 
 readInterval :: String -> Maybe TimeInterval
-readInterval str = parseMaybe parseInterval str
+readInterval = parseMaybe parseInterval
   where
     parseInterval :: Parser TimeInterval
     parseInterval = space *> (try parseBoundedTime
@@ -142,7 +142,7 @@ overlap (Exact t) (BoundedTime begin end) = begin < t && t < end
 overlap (Exact t) (Before end) = t < end
 overlap (Exact t) (After begin) = begin < t
 overlap (Exact t) (Exact t') = t == t'
-overlap t (Union int int') = (overlap t int) || (overlap t int')
+overlap t (Union int int') = overlap t int || overlap t int'
 -- overlap is a symmetric relation, so we can simplify its implementation by
 -- omitting half of the pattern matching cases and revert the arguments
 overlap x y = overlap y x
@@ -176,7 +176,7 @@ instance ToHttpApiData Surface where
   toQueryParam = pack . show
 
 readSurface :: String -> Maybe Surface
-readSurface str = parseMaybe parseSurface str
+readSurface = parseMaybe parseSurface
   where
     parseSurface :: Parser Surface
     parseSurface = (do string "poly:"
@@ -277,9 +277,9 @@ instance FromJSON Location where
                                   <*> o .: "surface"
 
 selectEvent :: Maybe TimeInterval -> Maybe Surface -> (a -> TimeInterval) -> (a -> Surface) -> a -> Bool
-selectEvent (Just int') (Just surface') getInt getSurface x = (overlap (getInt x) int') && collide (getSurface x) surface'
+selectEvent (Just int') (Just surface') getInt getSurface x = overlap (getInt x) int' && collide (getSurface x) surface'
 selectEvent Nothing (Just surface') _ getSurface x = collide (getSurface x) surface'
-selectEvent (Just int') Nothing getInt _ x = (overlap (getInt x) int')
+selectEvent (Just int') Nothing getInt _ x = overlap (getInt x) int'
 selectEvent Nothing Nothing _ _ x = True
 
 filterEvents :: Maybe TimeInterval -> Maybe Surface -> (a -> TimeInterval) -> (a -> Surface) -> [a] -> [a]

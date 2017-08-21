@@ -12,15 +12,15 @@ import           Web.Ogma.Resource
 
 spec :: Spec
 spec = describe "selectEdges" $ do
-  it "should select everything" $ do
+  it "should select everything" $
     selectEdges proxy (everything Proxy) `shouldBe`
       Identity allRes
 
-  it "should select only Relation" $ do
+  it "should select only Relation" $
     selectEdges proxy (EProd (everything Proxy) (nothing Proxy)) `shouldBe`
       Identity onlyRelation
 
-  it "should select only FriendsWith" $ do
+  it "should select only FriendsWith" $
     selectEdges proxy selectFriends `shouldBe`
       Identity onlyFriends
 

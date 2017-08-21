@@ -51,7 +51,7 @@ instance Shrinkable Bool
 
 class (Shrinkable a, Applicative m) => Expendable m a where
   expand :: Int -> a -> m a
-  expand _ x = pure x
+  expand _ = pure
 
 class Fetchable m a where
   fetch :: Id a -> m a
@@ -69,16 +69,16 @@ instance WeakFunctor Entity where
   wmap _ x            = x
 
 instance Shrinkable (Entity a) where
-  shrink (Complete (Identified idx _)) = (IdOnly idx)
+  shrink (Complete (Identified idx _)) = IdOnly idx
   shrink x                             = x
 
 instance (Monad m, Expendable m a, Fetchable m a) => Expendable m (Entity a) where
   expand x y@(IdOnly idx)
-    | x < 1 = pure y
-    | otherwise = (Complete . (Identified idx))  <$> (fetch idx >>= (expand $ x-1))
+    | x < 1     = pure y
+    | otherwise = (Complete . Identified idx)  <$> (fetch idx >>= expand (x-1))
   expand x (Complete (Identified idx value))
-    | x < 1 = pure $ IdOnly idx
-    | otherwise = (Complete . (Identified idx)) <$> (expand (x-1) value)
+    | x < 1     = pure $ IdOnly idx
+    | otherwise = (Complete . Identified idx) <$> expand (x-1) value
 
 data EntityList a = CompleteList [Identified a]
                   | IdOnlyList [Id a]
@@ -95,11 +95,11 @@ instance (Shrinkable a) => Shrinkable (EntityList a) where
 
 instance (Monad m, Expendable m a, Fetchable m a) => Expendable m (EntityList a) where
   expand x y@(IdOnlyList idxs)
-    | x < 1 = pure y
-    | otherwise = CompleteList <$> ((\idx -> (Identified idx) <$> ((fetch idx) >>= (expand $ x-1))) `mapM` idxs)
+    | x < 1     = pure y
+    | otherwise = CompleteList <$> ((\idx -> Identified idx <$> (fetch idx >>= expand (x-1))) `mapM` idxs)
   expand x (CompleteList ids)
-    | x < 1 = IdOnlyList <$> ((\(Identified idx _) ->  pure idx) `mapM` ids)
-    | otherwise = CompleteList <$> ((\(Identified idx value) -> Identified idx <$> expand (x-1) value) `mapM` ids)
+    | x < 1     = IdOnlyList <$> ((\(Identified idx _) ->  pure idx) `mapM` ids)
+    | otherwise = CompleteList <$> ((\(Identified idx value) -> Identified idx <$> (expand $ x-1) value) `mapM` ids)
 
 instance (ToJSON a, ToJSON (Id a)) => ToJSON (Entity a) where
   toJSON (IdOnly idx)  = toJSON idx

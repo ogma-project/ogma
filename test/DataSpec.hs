@@ -34,43 +34,43 @@ instance Arbitrary Location where
 
 spec :: Spec
 spec = do
-  describe "overlap" $ do
+  describe "overlap" $
     it "should be reflexive" $ property $
-      \x -> (overlap x x == True)
+      \x -> overlap x x
 
     it "should be symmetric" $ property $
       \x y -> (overlap x y == overlap y x)
 
-  describe "union" $ do
+  describe "union" $
     it "should be associative" $ property $
-      \a x y z -> (overlap a (union x (union y z)) == overlap a (union (union x y) z))
+      \a x y z -> (overlap a (x `union` (y `union` z)) == overlap a ((x `union` y) `union` z))
 
     it "should be symmetric" $ property $
-      \a x y -> (overlap a (union x y) == overlap a (union x y))
+      \a x y -> (overlap a (x `union` y) == overlap a (x `union` y))
 
-  describe "readInterval" $ do
+  describe "readInterval" $
     it "should be the inverse of show" $ property $
       \x -> (readInterval . show) x == Just x
 
-  describe "Aeson instances (TimeInterval)" $ do
+  describe "Aeson instances (TimeInterval)" $
     it "should be inverse functions of each other" $ property $
       \x -> (fromJSON . toJSON) x == Success (x :: TimeInterval)
 
-  describe "readSurface" $ do
+  describe "readSurface" $
     it "should be the inverse of show" $ property $
       \x -> (readSurface . show) x == Just x
 
-  describe "collide" $ do
+  describe "collide" $
     it "should be reflexive" $ property $
-      \x -> (collide x x == True)
+      \x -> collide x x
 
     it "should be symmetric" $ property $
       \x y -> (collide x y == collide y x)
 
-  describe "Aeson instances (Surface)" $ do
+  describe "Aeson instances (Surface)" $
     it "should be inverse functions of each other" $ property $
       \x -> (fromJSON . toJSON) x == Success (x :: Surface)
 
-  describe "Aeson instances (Location)" $ do
+  describe "Aeson instances (Location)" $
     it "should be inverse functions of each other" $ property $
       \x -> (fromJSON . toJSON) x == Success (x :: Location)
