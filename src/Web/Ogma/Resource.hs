@@ -12,9 +12,10 @@
 
 module Web.Ogma.Resource where
 
-import Data.Typeable (Typeable)
-import Data.Proxy    (Proxy(..))
+import Data.Typeable            (Typeable)
+import Data.Proxy               (Proxy(..))
 import Control.Monad.Identity
+import Data.Maybe               (maybe)
 
 class Selectable e where
   data Selector e :: *
@@ -63,21 +64,24 @@ instance (GraphMonad s m, GraphMonad s' m) => GraphMonad (s :<>: s') m where
 class Fetchable a where
   type Id a :: *
 
-data from -: label
+data (from :: *) -: (label :: *)
   deriving (Typeable)
 infix 9 -:
 
-data prem :-> to
+data prem :-> (to :: *)
   deriving (Typeable)
 infix 8 :->
 
 instance (Fetchable a, Selectable e, Fetchable b) => Graph (a -: e :-> b) where
   data Edges (a -: e :-> b) = Edge (Id a) e (Id b)
 
--- TODO: Selection should be possible for the nodes to
-instance (Graph (a -: e :-> b), Selectable e) => Selectable (Edges (a -: e :-> b)) where
-  data Selector (Edges (a -: e :-> b)) = ES (Selector e)
+instance (Eq (Id a), Eq (Id b), Graph (a -: e :-> b), Selectable e) => Selectable (Edges (a -: e :-> b)) where
+  data Selector (Edges (a -: e :-> b)) = ES (Maybe [Id a]) (Selector e) (Maybe [Id b])
 
-  select (ES sel) (Edge _ l _) = select sel l
-  nothing _ = ES $ nothing Proxy
-  everything _ = ES $ everything Proxy
+  select (ES froms sel tos) (Edge ia l ib) =
+       maybe True (\ids -> ia `elem` ids) froms
+    && maybe True (\ids -> ib `elem` ids) tos
+    && select sel l
+
+  nothing _ = ES (Just []) (nothing Proxy) (Just [])
+  everything _ = ES Nothing (everything Proxy) Nothing
