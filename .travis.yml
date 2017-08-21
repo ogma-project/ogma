@@ -35,6 +35,6 @@ script:
   - stack haddock
 
 after_script:
-  - mkdir -p dist/
-  - cp -r $(find .stack-work/install -type d -name hpc) dist/
+  - mkdir -p dist/hpc/tix
+  - cp $(find .stack-work/install -name ogma-test.tix) dist/hpc/tix
   - stack exec hpc-coveralls ogma-test
