@@ -1,3 +1,4 @@
+{-# LANGUAGE StandaloneDeriving #-}
 {-# LANGUAGE AllowAmbiguousTypes #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE FunctionalDependencies #-}
@@ -8,13 +9,17 @@
 {-# LANGUAGE PolyKinds #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE TypeFamilies #-}
+{-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE ScopedTypeVariables #-}
 
 module Web.Ogma.Resource where
 
-import Data.Typeable            (Typeable)
-import Data.Proxy               (Proxy(..))
+import Control.Applicative      ((<|>))
 import Control.Monad.Identity
+import Data.Aeson
 import Data.Maybe               (maybe)
+import Data.Proxy               (Proxy(..))
+import Data.Typeable            (Typeable)
 
 class Selectable e where
   data Selector e :: *
@@ -84,3 +89,42 @@ instance (Eq (Id a), Eq (Id b), Graph (a -: e :-> b), Selectable e) => Selectabl
 
   nothing _ = ES (Just []) (nothing Proxy) (Just [])
   everything _ = ES Nothing (everything Proxy) Nothing
+
+
+class Named a where
+  name :: Proxy a -> String
+
+instance (Named (a -: e :-> b), ToJSON (Id a), ToJSON (Id b), ToJSON e) => ToJSON (Edges (a -: e :-> b)) where
+  toJSON (Edge ida label idb) = object [ "type" .= name (Proxy :: Proxy (a -: e :-> b))
+                                       , "from" .= ida
+                                       , "to" .= idb
+                                       , "label" .= label
+                                       ]
+
+instance (Named (a -: e :-> b), FromJSON (Id a), FromJSON (Id b), FromJSON e) => FromJSON (Edges (a -: e :-> b)) where
+  parseJSON (Object o) = do
+    t <- o .: "type"
+
+    if (t == name (Proxy :: Proxy (a -: e :-> b)))
+    then Edge <$> o .: "from"
+              <*> o .: "label"
+              <*> o .: "to"
+    else fail "not the good type"
+
+instance (ToJSON (Edges s), ToJSON (Edges s')) => ToJSON (Edges (s :<>: s')) where
+  toJSON (ELeft x) = toJSON x
+  toJSON (ERight y) = toJSON y
+
+instance (FromJSON (Edges s), FromJSON (Edges s')) => FromJSON (Edges (s :<>: s')) where
+  parseJSON json = (ELeft <$> parseJSON json) <|> (ERight <$> parseJSON json)
+
+instance (Named (a -: e :-> b), Show (Id a), Show (Id b), Show e) => Show (Edges (a -: e :-> b)) where
+  show (Edge ida label idb) = "[" ++ name (Proxy :: Proxy (a -: e :-> b)) ++ "] from " ++ show ida
+    ++ " to " ++ show idb ++ " with label " ++ show label
+
+instance (Show (Edges a), Show (Edges b)) => Show (Edges (a :<>: b)) where
+  show (ERight x) = show x
+  show (ELeft x) = show x
+
+deriving instance (Eq (Id a), Eq (Id b), Eq e) => Eq (Edges (a -: e :-> b))
+deriving instance (Eq (Edges s), Eq (Edges s')) => Eq (Edges (s :<>: s'))
