@@ -80,6 +80,10 @@ install:
       stack)
         stack --no-terminal --install-ghc $ARGS test --only-dependencies
         ;;
+      style)
+        stack --no-terminal --install-ghc $ARGS test --only-dependencies
+        stack install stylish-haskell hlint
+        ;;
       cabal)
         cabal --version
         travis_retry cabal update
@@ -90,6 +94,18 @@ install:
 script:
   - |
     case "$BUILD" in
+      style)
+        find . -name '*.hs' -exec stack exec stylish-haskell -- -i {} \;
+        git status
+        git status | grep "nothing to commit"
+        # hlint should return nothing for src dir
+        stack exec hlint -- lint src
+        # hlint should return nothing for app dir
+        stack exec hlint -- lint app
+        # hlint should return nothing for test dir
+        stack exec hlint -- lint test
+        # documentation needs to build
+        ;;
       stack)
         stack --no-terminal $ARGS test --haddock --no-haddock-deps
         ;;
