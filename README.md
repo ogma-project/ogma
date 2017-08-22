@@ -1,7 +1,6 @@
-# Ogma API
+# Ogma
 
-The `ogma-api` package contains the specification of the API exposed by an ogma
-server.
-
-This repository also implements `og2purs`, a tool to generate purescript helpers
-to query the API more easily.
+Service         | Status
+----------------|---------------------------------------------------------------
+Build Status    | [![Build Status](https://travis-ci.org/ogma-project/ogma.svg?branch=master)](https://travis-ci.org/ogma-project/ogma)
+Coverage Status | [![Coverage Status](https://coveralls.io/repos/github/ogma-project/ogma/badge.svg?branch=master)](https://coveralls.io/github/ogma-project/ogma?branch=master)
