@@ -83,7 +83,7 @@ onlyRelation = [ ELeft (Edge "Tom" FriendsWith "Max")
 
 onlyFriends :: [Edges TGraph]
 onlyFriends = [ ELeft (Edge "Tom" FriendsWith "Max")
-              , ELeft (Edge "Max" FriendsWith "Peter")
+              , ELeft (Edge "Mx" FriendsWith "Peter")
               ]
 
 selectFriends :: Selector (Edges TGraph)
