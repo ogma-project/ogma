@@ -1,28 +1,60 @@
+{-# LANGUAGE FlexibleContexts      #-}
 {-# LANGUAGE FlexibleInstances     #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE OverloadedStrings     #-}
 {-# LANGUAGE TypeFamilies          #-}
 {-# LANGUAGE TypeOperators         #-}
 
 module GraphSpec where
 
 import           Control.Monad.Identity (Identity (..))
+import           Data.Aeson
 import           Data.Proxy
 import           Test.Hspec             (Spec, describe, it, shouldBe)
+import           Test.QuickCheck        (Arbitrary (arbitrary), oneof, property)
 import           Web.Ogma.Resource
 
 spec :: Spec
-spec = describe "selectEdges" $ do
-  it "should select everything" $
-    selectEdges proxy (everything Proxy) `shouldBe`
-      Identity allRes
+spec = do
+  checkSelectableLaws (Proxy :: Proxy (Edges (Character -: Relation :-> Character))) "Simple Edge"
+  checkSelectableLaws (Proxy :: Proxy (Edges TGraph)) "Composed Edges"
 
-  it "should select only Relation" $
-    selectEdges proxy (EProd (everything Proxy) (nothing Proxy)) `shouldBe`
-      Identity onlyRelation
+  describe "Aeson instances (Simple Edge)" $
+    it "should be inverse functions of each other" $ property $
+      \x -> (fromJSON . toJSON) x == Success (x ::Edges (Character -: Relation :-> Character))
 
-  it "should select only FriendsWith" $
-    selectEdges proxy selectFriends `shouldBe`
-      Identity onlyFriends
+  describe "Aeson instances (Composed Edges)" $
+    it "should be inverse functions of each other" $ property $
+      \x -> (fromJSON . toJSON) x == Success (x ::Edges TGraph)
+
+  describe "selectEdges" $ do
+    it "should select everything" $
+      selectEdges proxy (everything Proxy) `shouldBe`
+        Identity allRes
+
+    it "should select only Relation" $
+      selectEdges proxy (EProd (everything Proxy) (nothing Proxy)) `shouldBe`
+        Identity onlyRelation
+
+    it "should select only FriendsWith" $
+      selectEdges proxy selectFriends `shouldBe`
+        Identity onlyFriends
+
+checkSelectableLaws :: (Arbitrary a, Selectable a, Show a) => Proxy a -> String -> Spec
+checkSelectableLaws proxy name =
+  describe ("Selectable Type Laws (" ++ name ++ ")") $ do
+    it "everything should validate everything" $ property $
+      select (everything proxy)
+    it "nothing should discard everything" $ property $
+      \x -> not $ select (nothing proxy) x
+
+instance (Arbitrary (Id a), Arbitrary e, Arbitrary (Id b)) => Arbitrary (Edges (a -: e :-> b)) where
+  arbitrary = Edge <$>  arbitrary <*> arbitrary <*> arbitrary
+
+instance (Arbitrary (Edges s), Arbitrary (Edges s')) => Arbitrary (Edges (s :<>: s')) where
+  arbitrary = oneof [ ERight <$> arbitrary
+                    , ELeft <$> arbitrary
+                    ]
 
 data Character
 data Location
@@ -48,6 +80,19 @@ instance Selectable Relation where
 
   select (Is sel) x = maybe True (\rels -> x `elem` rels) sel
 
+instance Arbitrary Relation where
+  arbitrary = oneof $ pure <$> [ FriendsWith
+                               , WorksFor
+                               ]
+
+instance ToJSON Relation where
+  toJSON FriendsWith = String "is friend with"
+  toJSON WorksFor    = String "works for"
+
+instance FromJSON Relation where
+  parseJSON (String "is friend with") = pure FriendsWith
+  parseJSON (String "works for")      = pure WorksFor
+
 instance Selectable BirthPlace where
   data Selector BirthPlace = SelectBirthPlace | NoBirthPlace
 
@@ -56,6 +101,16 @@ instance Selectable BirthPlace where
 
   select SelectBirthPlace _ = True
   select _ _                = False
+
+instance Arbitrary BirthPlace where
+  arbitrary = pure BirthPlace
+
+instance ToJSON BirthPlace where
+  toJSON _ = String "is born at"
+
+instance FromJSON BirthPlace where
+  parseJSON (String "is born at") = pure BirthPlace
+
 
 relations :: [Edges (Character -: Relation :-> Character)]
 relations = [Edge "Tom" FriendsWith "Max", Edge "Max" WorksFor "Peter", Edge "Max" FriendsWith "Peter"]
@@ -99,7 +154,7 @@ instance Named (Character -: BirthPlace :-> Location) where
   name _ = "BIRTH"
 
 instance GraphMonad (Character -: Relation :-> Character) Identity where
-  selectEdges _ sel = pure $ filter (select sel) relations
+  selectEdges _ sel = pure $ selects sel relations
 
 instance GraphMonad (Character -: BirthPlace :-> Location) Identity where
-  selectEdges _ sel = pure $ filter (select sel) birthPlaces
+  selectEdges _ sel = pure $ selects sel birthPlaces
