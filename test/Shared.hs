@@ -1,9 +1,10 @@
 module Shared where
 
-import           Test.Hspec             (Spec, describe, it, shouldBe)
-import           Test.QuickCheck        (Arbitrary (arbitrary), oneof, property, Property)
-import Data.Aeson
-import Data.Proxy
+import           Data.Aeson
+import           Data.Proxy
+import           Test.Hspec      (Spec, describe, it, shouldBe)
+import           Test.QuickCheck (Arbitrary (arbitrary), Property, oneof,
+                                  property)
 
 (-->) :: Bool -> Bool -> Bool
 x --> y = not x || y
