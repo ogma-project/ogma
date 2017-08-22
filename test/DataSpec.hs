@@ -4,6 +4,7 @@ import           Data.Aeson
 import           Data.Text       (Text, pack)
 import           Test.Hspec      (Spec, describe, it)
 import           Test.QuickCheck (Arbitrary (arbitrary), oneof, property)
+import           Web.HttpApiData
 
 import           Web.Ogma.Data
 
@@ -27,6 +28,9 @@ instance Arbitrary Point where
 instance Arbitrary Surface where
   arbitrary = oneof [ circle <$> arbitrary <*> arbitrary
                     , polygon <$> arbitrary <*> arbitrary <*> arbitrary <*> arbitrary
+                    , point <$> arbitrary
+                    , triangle <$> arbitrary <*> arbitrary <*> arbitrary
+                    , rectangle <$> arbitrary <*> arbitrary
                     ]
 
 instance Arbitrary Location where
@@ -56,6 +60,10 @@ spec = do
     it "should be inverse functions of each other" $ property $
       \x -> (fromJSON . toJSON) x == Success (x :: TimeInterval)
 
+  describe "HttpApiData (TimeInterval)" $
+    it "should be inverse functions of each other" $ property $
+      \x -> (parseQueryParam . toQueryParam) x == Right (x :: TimeInterval)
+
   describe "readSurface" $
     it "should be the inverse of show" $ property $
       \x -> (readSurface . show) x == Just x
@@ -70,6 +78,10 @@ spec = do
   describe "Aeson instances (Surface)" $
     it "should be inverse functions of each other" $ property $
       \x -> (fromJSON . toJSON) x == Success (x :: Surface)
+
+  describe "HttpApiData (Surface)" $
+    it "should be inverse functions of each other" $ property $
+      \x -> (parseQueryParam . toQueryParam) x == Right (x :: Surface)
 
   describe "Aeson instances (Location)" $
     it "should be inverse functions of each other" $ property $

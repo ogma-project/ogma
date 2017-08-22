@@ -1,3 +1,4 @@
+{-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE FlexibleContexts      #-}
 {-# LANGUAGE FlexibleInstances     #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
@@ -14,10 +15,15 @@ import           Test.Hspec             (Spec, describe, it, shouldBe)
 import           Test.QuickCheck        (Arbitrary (arbitrary), oneof, property)
 import           Web.Ogma.Resource
 
+import           Shared
+
 spec :: Spec
 spec = do
   checkSelectableLaws (Proxy :: Proxy (Edges (Character -: Relation :-> Character))) "Simple Edge"
   checkSelectableLaws (Proxy :: Proxy (Edges TGraph)) "Composed Edges"
+
+  checkRelation "Eq for Simple Edge" (\(x :: Edges (Character -: Relation :-> Character)) y -> x == y)
+  checkRelation "Eq for Composed Edges" (\(x :: Edges TGraph) y -> x == y)
 
   describe "Aeson instances (Simple Edge)" $
     it "should be inverse functions of each other" $ property $
