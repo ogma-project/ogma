@@ -72,6 +72,7 @@ install:
   - echo "$(ghc --version) [$(ghc --print-project-git-commit-id 2> /dev/null || echo '?')]"
   - if [ -f configure.ac ]; then autoreconf -i; fi
   - |
+    set -ex
     case "$BUILD" in
       stack)
         stack --no-terminal --install-ghc $ARGS test --only-dependencies
@@ -85,9 +86,11 @@ install:
         cabal install --only-dependencies --enable-tests --enable-benchmarks --force-reinstalls --ghc-options=-O0 --reorder-goals --max-backjumps=-1 $CABALARGS
         ;;
     esac
+    set +ex
 
 script:
   - |
+    set -ex
     case "$BUILD" in
       style)
         find . -name '*.hs' -exec stack exec stylish-haskell -- -i {} \;
@@ -117,3 +120,4 @@ script:
           (cd dist && cabal install --force-reinstalls "$SRC_TGZ")
         ;;
     esac
+    set +ex
