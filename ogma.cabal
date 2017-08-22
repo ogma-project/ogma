@@ -1,6 +1,6 @@
 name:                ogma
 version:             0.0.0.0
--- synopsis:
+synopsis:            Ogma as a server
 -- description:
 homepage:            https://github.com/ogma-project/ogma#readme
 license:             AGPL-3

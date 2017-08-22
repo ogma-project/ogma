@@ -13,7 +13,7 @@
 
 module Web.Ogma.Resource where
 
-import Control.Applicative    ((<|>))
+import           Control.Applicative    ((<|>))
 import           Control.Monad.Identity
 import           Data.Aeson
 import           Data.Maybe             (maybe)
