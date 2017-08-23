@@ -17,6 +17,7 @@ module Web.Ogma.Resource where
 import           Control.Applicative    ((<|>))
 import           Control.Monad.Identity
 import           Data.Aeson
+import           Data.List              (intersect, union)
 import           Data.Maybe             (maybe)
 import           Data.Typeable          (Typeable)
 
@@ -38,27 +39,14 @@ class Selectable e where
 
   everything :: Selector e
 
--- TODO: add the following properties
--- either :: Proxy e -> Selector e -> Selector e -> Bool
--- both   :: Proxy e -> Selector e -> Selector e -> Bool
--- With the following properties:
---   prop> select (either Proxy x y) e = select x e || select y e
---   prop> select (both Proxy x y) e = select x e && select y e
+  -- | prop> select (both Proxy x y) e = select x e && select y e
+  both   :: Selector e -> Selector e -> Selector e
 
 selects :: (Selectable e) => Selector e -> [e] -> [e]
 selects sel = filter (select sel)
 
 class Graph spec where
   data Edges spec
-
-instance (Selectable a, Selectable b) => Selectable (Either a b) where
-  data Selector (Either a b) = Prod (Selector a) (Selector b)
-
-  select (Prod f _) (Left x)   = select f x
-  select (Prod _ f') (Right y) = select f' y
-
-  nothing = Prod nothing nothing
-  everything = Prod everything everything
 
 data (a :: *) :<>: (b :: *)
   deriving (Typeable)
@@ -75,6 +63,11 @@ instance (Graph s, Graph s', Selectable (Edges s), Selectable (Edges s')) => Sel
 
   nothing = EProd nothing nothing
   everything = EProd everything everything
+
+  both (EProd p p') (EProd q q') = EProd (both p q) (both p' q')
+
+deriving instance (Eq (Selector (Edges a)), Eq (Selector (Edges b))) => Eq (Selector (Edges (a :<>: b)))
+deriving instance (Show (Selector (Edges a)), Show (Selector (Edges b))) => Show (Selector (Edges (a :<>: b)))
 
 class (Graph s, Monad m, Selectable (Edges s)) => GraphMonad s m where
   selectEdges :: Selector (Edges s) -> m [Edges s]
@@ -110,6 +103,17 @@ instance (Eq (Id a), Eq (Id b), Graph (a -: e :-> b), Selectable e) => Selectabl
   nothing = ES (Just []) nothing (Just [])
   everything = ES Nothing everything Nothing
 
+  both (ES x label y) (ES x' label' y') =
+    let nx =  prod x x' in
+    let ny = prod y y' in
+      ES nx (both label label') ny
+    where prod Nothing Nothing   = Nothing
+          prod (Just x) Nothing  = Just x
+          prod Nothing (Just y)  = Just y
+          prod (Just x) (Just y) = Just $ intersect x y
+
+deriving instance (Eq (Id a), Eq (Id b), Eq (Selector e)) => Eq (Selector (Edges (a -: e :-> b)))
+deriving instance (Show (Id a), Show (Id b), Show (Selector e)) => Show (Selector (Edges (a -: e :-> b)))
 
 class Named a where
   name :: String
