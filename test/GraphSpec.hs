@@ -10,7 +10,6 @@
 
 module GraphSpec where
 
-import           Control.Applicative    (liftA2)
 import           Control.Monad.Identity (Identity (..))
 import           Data.Aeson
 import           Data.List              (intersect, union)

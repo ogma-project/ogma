@@ -14,7 +14,7 @@
 
 module Web.Ogma.Resource where
 
-import           Control.Applicative    (liftA2, (<|>))
+import           Control.Applicative    ((<|>))
 import           Control.Monad.Identity
 import           Data.Aeson
 import           Data.List              (intersect, union)
