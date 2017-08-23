@@ -1,27 +1,34 @@
-{-# LANGUAGE AllowAmbiguousTypes   #-}
-{-# LANGUAGE DataKinds             #-}
-{-# LANGUAGE FlexibleContexts      #-}
-{-# LANGUAGE FlexibleInstances     #-}
-{-# LANGUAGE GADTs                 #-}
-{-# LANGUAGE MultiParamTypeClasses #-}
-{-# LANGUAGE OverloadedStrings     #-}
-{-# LANGUAGE PolyKinds             #-}
-{-# LANGUAGE ScopedTypeVariables   #-}
-{-# LANGUAGE StandaloneDeriving    #-}
-{-# LANGUAGE TypeApplications      #-}
-{-# LANGUAGE TypeFamilies          #-}
-{-# LANGUAGE TypeOperators         #-}
+{-|
+Module: Web.Ogma.Resource
+Copyright: Ogma Project 2016–2017
+License: AGPL-3
+Stability: experimental
 
-module Web.Ogma.Resource where
+This module provides a set of typeclasses to work with the resources exposed by
+the library. The main idea is to derive an API specifications and servers.
 
-import           Control.Applicative    ((<|>))
-import           Control.Monad.Identity
-import           Data.Aeson
-import           Data.List              (intersect, union)
-import           Data.Maybe             (maybe)
-import           Data.Typeable          (Typeable)
+-}
 
--- | A typeclass to filter given a dedicated 'Selector'.
+{-# LANGUAGE AllowAmbiguousTypes #-}
+{-# LANGUAGE TypeFamilies        #-}
+
+module Web.Ogma.Resource
+  ( Resource(..)
+  , Fetchable(..)
+  , Selectable(..)
+  , selects
+  ) where
+
+-- | A resource needs to be 'Fetchable' and to do that, it needs to be easily
+--   identifiable. The 'Fetchable' typeclass is the entry point of the
+--   'Resource' typeclass hierarchy and is here to deal with that.
+class Fetchable a where
+  -- | To be 'Fetchable', a 'Resource' needs to have a well identified 'Id'.
+  type Id a :: *
+
+-- | Typically, an API will give a route to get a list of a given
+--   'Resource'. The 'Selectable' typeclass is here to provide a 'Selector',
+--   that is a specific set of values to validate or discard a 'Resource'.
 class Selectable e where
   -- | The 'Selector' is a set of values which can be used to validate or
   --   discard a 'Selectable' value.
@@ -39,116 +46,14 @@ class Selectable e where
 
   everything :: Selector e
 
-  -- | prop> select (both Proxy x y) e = select x e && select y e
+  -- | An aggregator for the 'Selector' type. The implementation should have the
+  --   following property:
+  --
+  --   prop> select (both Proxy x y) e = select x e && select y e
   both   :: Selector e -> Selector e -> Selector e
 
 selects :: (Selectable e) => Selector e -> [e] -> [e]
 selects sel = filter (select sel)
 
-class Graph spec where
-  data Edges spec
-
-data (a :: *) :<>: (b :: *)
-  deriving (Typeable)
-
-instance (Graph s, Graph s') => Graph (s :<>: s') where
-  data Edges (s :<>: s') = ELeft (Edges s)
-                         | ERight (Edges s')
-
-instance (Graph s, Graph s', Selectable (Edges s), Selectable (Edges s')) => Selectable (Edges (s :<>: s')) where
-  data Selector (Edges (s :<>: s')) = EProd (Selector (Edges s)) (Selector (Edges s'))
-
-  select (EProd f _) (ELeft x)   = select f x
-  select (EProd _ f') (ERight y) = select f' y
-
-  nothing = EProd nothing nothing
-  everything = EProd everything everything
-
-  both (EProd p p') (EProd q q') = EProd (both p q) (both p' q')
-
-deriving instance (Eq (Selector (Edges a)), Eq (Selector (Edges b))) => Eq (Selector (Edges (a :<>: b)))
-deriving instance (Show (Selector (Edges a)), Show (Selector (Edges b))) => Show (Selector (Edges (a :<>: b)))
-
-class (Graph s, Monad m, Selectable (Edges s)) => GraphMonad s m where
-  selectEdges :: Selector (Edges s) -> m [Edges s]
-
-instance (GraphMonad s m, GraphMonad s' m) => GraphMonad (s :<>: s') m where
-  selectEdges (EProd f f') = do
-    res  <- selectEdges f
-    res' <- selectEdges f'
-    pure $ (ELeft <$> res) ++ (ERight <$> res')
-
-class Fetchable a where
-  type Id a :: *
-
-data (from :: *) -: (label :: *)
-  deriving (Typeable)
-infix 9 -:
-
-data prem :-> (to :: *)
-  deriving (Typeable)
-infix 8 :->
-
-instance (Fetchable a, Selectable e, Fetchable b) => Graph (a -: e :-> b) where
-  data Edges (a -: e :-> b) = Edge (Id a) e (Id b)
-
-instance (Eq (Id a), Eq (Id b), Graph (a -: e :-> b), Selectable e) => Selectable (Edges (a -: e :-> b)) where
-  data Selector (Edges (a -: e :-> b)) = ES (Maybe [Id a]) (Selector e) (Maybe [Id b])
-
-  select (ES froms sel tos) (Edge ia l ib) =
-       maybe True (\ids -> ia `elem` ids) froms
-    && maybe True (\ids -> ib `elem` ids) tos
-    && select sel l
-
-  nothing = ES (Just []) nothing (Just [])
-  everything = ES Nothing everything Nothing
-
-  both (ES x label y) (ES x' label' y') =
-    let nx =  prod x x' in
-    let ny = prod y y' in
-      ES nx (both label label') ny
-    where prod Nothing Nothing   = Nothing
-          prod (Just x) Nothing  = Just x
-          prod Nothing (Just y)  = Just y
-          prod (Just x) (Just y) = Just $ intersect x y
-
-deriving instance (Eq (Id a), Eq (Id b), Eq (Selector e)) => Eq (Selector (Edges (a -: e :-> b)))
-deriving instance (Show (Id a), Show (Id b), Show (Selector e)) => Show (Selector (Edges (a -: e :-> b)))
-
-class Named a where
-  name :: String
-
-instance (Named (a -: e :-> b), ToJSON (Id a), ToJSON (Id b), ToJSON e) => ToJSON (Edges (a -: e :-> b)) where
-  toJSON (Edge ida label idb) = object [ "type" .= name @(a -: e :-> b)
-                                       , "from" .= ida
-                                       , "to" .= idb
-                                       , "label" .= label
-                                       ]
-
-instance (Named (a -: e :-> b), FromJSON (Id a), FromJSON (Id b), FromJSON e) => FromJSON (Edges (a -: e :-> b)) where
-  parseJSON (Object o) = do
-    t <- o .: "type"
-
-    if t == name @(a -: e :-> b)
-    then Edge <$> o .: "from"
-              <*> o .: "label"
-              <*> o .: "to"
-    else fail "not the good type"
-
-instance (ToJSON (Edges s), ToJSON (Edges s')) => ToJSON (Edges (s :<>: s')) where
-  toJSON (ELeft x)  = toJSON x
-  toJSON (ERight y) = toJSON y
-
-instance (FromJSON (Edges s), FromJSON (Edges s')) => FromJSON (Edges (s :<>: s')) where
-  parseJSON json = (ELeft <$> parseJSON json) <|> (ERight <$> parseJSON json)
-
-instance (Named (a -: e :-> b), Show (Id a), Show (Id b), Show e) => Show (Edges (a -: e :-> b)) where
-  show (Edge ida label idb) = "[" ++ name @(a -: e :-> b) ++ "] from " ++ show ida
-    ++ " to " ++ show idb ++ " with label " ++ show label
-
-instance (Show (Edges a), Show (Edges b)) => Show (Edges (a :<>: b)) where
-  show (ERight x) = show x
-  show (ELeft x)  = show x
-
-deriving instance (Eq (Id a), Eq (Id b), Eq e) => Eq (Edges (a -: e :-> b))
-deriving instance (Eq (Edges s), Eq (Edges s')) => Eq (Edges (s :<>: s'))
+-- | A 'Resource' is a data which is exposed by an API.
+class (Fetchable a, Selectable a) => Resource a

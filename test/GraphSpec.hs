@@ -15,7 +15,9 @@ import           Data.Aeson
 import           Data.List              (intersect, union)
 import           Test.Hspec             (Spec, describe, it, shouldBe)
 import           Test.QuickCheck        (Arbitrary (arbitrary), oneof, property)
+
 import           Web.Ogma.Resource
+import           Web.Ogma.Graph
 
 import           Shared
 
