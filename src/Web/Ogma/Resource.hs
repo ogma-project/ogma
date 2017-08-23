@@ -8,6 +8,7 @@
 {-# LANGUAGE PolyKinds             #-}
 {-# LANGUAGE ScopedTypeVariables   #-}
 {-# LANGUAGE StandaloneDeriving    #-}
+{-# LANGUAGE TypeApplications      #-}
 {-# LANGUAGE TypeFamilies          #-}
 {-# LANGUAGE TypeOperators         #-}
 
@@ -17,7 +18,6 @@ import           Control.Applicative    ((<|>))
 import           Control.Monad.Identity
 import           Data.Aeson
 import           Data.Maybe             (maybe)
-import           Data.Proxy             (Proxy (..))
 import           Data.Typeable          (Typeable)
 
 -- | A typeclass to filter given a dedicated 'Selector'.
@@ -31,12 +31,12 @@ class Selectable e where
   -- | The 'Selector' which discards any input values. In other words:
   --
   --   prop> select (everything Proxy) e = True
-  nothing    :: Proxy e -> Selector e
+  nothing    :: Selector e
   -- | The 'Selector' which validates any input values. In other words:
   --
   --   prop> select (nothing Proxy) e = False
 
-  everything :: Proxy e -> Selector e
+  everything :: Selector e
 
 -- TODO: add the following properties
 -- either :: Proxy e -> Selector e -> Selector e -> Bool
@@ -57,8 +57,8 @@ instance (Selectable a, Selectable b) => Selectable (Either a b) where
   select (Prod f _) (Left x)   = select f x
   select (Prod _ f') (Right y) = select f' y
 
-  nothing _ = Prod (nothing Proxy) (nothing Proxy)
-  everything _ = Prod (everything Proxy) (everything Proxy)
+  nothing = Prod nothing nothing
+  everything = Prod everything everything
 
 data (a :: *) :<>: (b :: *)
   deriving (Typeable)
@@ -73,16 +73,16 @@ instance (Graph s, Graph s', Selectable (Edges s), Selectable (Edges s')) => Sel
   select (EProd f _) (ELeft x)   = select f x
   select (EProd _ f') (ERight y) = select f' y
 
-  nothing _ = EProd (nothing Proxy) (nothing Proxy)
-  everything _ = EProd (everything Proxy) (everything Proxy)
+  nothing = EProd nothing nothing
+  everything = EProd everything everything
 
 class (Graph s, Monad m, Selectable (Edges s)) => GraphMonad s m where
-  selectEdges :: Proxy s -> Selector (Edges s) -> m [Edges s]
+  selectEdges :: Selector (Edges s) -> m [Edges s]
 
 instance (GraphMonad s m, GraphMonad s' m) => GraphMonad (s :<>: s') m where
-  selectEdges _ (EProd f f') = do
-    res  <- selectEdges Proxy f
-    res' <- selectEdges Proxy f'
+  selectEdges (EProd f f') = do
+    res  <- selectEdges f
+    res' <- selectEdges f'
     pure $ (ELeft <$> res) ++ (ERight <$> res')
 
 class Fetchable a where
@@ -107,15 +107,15 @@ instance (Eq (Id a), Eq (Id b), Graph (a -: e :-> b), Selectable e) => Selectabl
     && maybe True (\ids -> ib `elem` ids) tos
     && select sel l
 
-  nothing _ = ES (Just []) (nothing Proxy) (Just [])
-  everything _ = ES Nothing (everything Proxy) Nothing
+  nothing = ES (Just []) nothing (Just [])
+  everything = ES Nothing everything Nothing
 
 
 class Named a where
-  name :: Proxy a -> String
+  name :: String
 
 instance (Named (a -: e :-> b), ToJSON (Id a), ToJSON (Id b), ToJSON e) => ToJSON (Edges (a -: e :-> b)) where
-  toJSON (Edge ida label idb) = object [ "type" .= name (Proxy :: Proxy (a -: e :-> b))
+  toJSON (Edge ida label idb) = object [ "type" .= name @(a -: e :-> b)
                                        , "from" .= ida
                                        , "to" .= idb
                                        , "label" .= label
@@ -125,7 +125,7 @@ instance (Named (a -: e :-> b), FromJSON (Id a), FromJSON (Id b), FromJSON e) =>
   parseJSON (Object o) = do
     t <- o .: "type"
 
-    if t == name (Proxy :: Proxy (a -: e :-> b))
+    if t == name @(a -: e :-> b)
     then Edge <$> o .: "from"
               <*> o .: "label"
               <*> o .: "to"
@@ -139,7 +139,7 @@ instance (FromJSON (Edges s), FromJSON (Edges s')) => FromJSON (Edges (s :<>: s'
   parseJSON json = (ELeft <$> parseJSON json) <|> (ERight <$> parseJSON json)
 
 instance (Named (a -: e :-> b), Show (Id a), Show (Id b), Show e) => Show (Edges (a -: e :-> b)) where
-  show (Edge ida label idb) = "[" ++ name (Proxy :: Proxy (a -: e :-> b)) ++ "] from " ++ show ida
+  show (Edge ida label idb) = "[" ++ name @(a -: e :-> b) ++ "] from " ++ show ida
     ++ " to " ++ show idb ++ " with label " ++ show label
 
 instance (Show (Edges a), Show (Edges b)) => Show (Edges (a :<>: b)) where

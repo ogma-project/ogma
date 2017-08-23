@@ -1,8 +1,10 @@
+{-# LANGUAGE AllowAmbiguousTypes   #-}
 {-# LANGUAGE FlexibleContexts      #-}
 {-# LANGUAGE FlexibleInstances     #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE OverloadedStrings     #-}
 {-# LANGUAGE ScopedTypeVariables   #-}
+{-# LANGUAGE TypeApplications      #-}
 {-# LANGUAGE TypeFamilies          #-}
 {-# LANGUAGE TypeOperators         #-}
 
@@ -10,7 +12,6 @@ module GraphSpec where
 
 import           Control.Monad.Identity (Identity (..))
 import           Data.Aeson
-import           Data.Proxy
 import           Test.Hspec             (Spec, describe, it, shouldBe)
 import           Test.QuickCheck        (Arbitrary (arbitrary), oneof, property)
 import           Web.Ogma.Resource
@@ -19,8 +20,8 @@ import           Shared
 
 spec :: Spec
 spec = do
-  checkSelectableLaws (Proxy :: Proxy (Edges (Character -: Relation :-> Character))) "Simple Edge"
-  checkSelectableLaws (Proxy :: Proxy (Edges TGraph)) "Composed Edges"
+  checkSelectableLaws @(Edges (Character -: Relation :-> Character)) "Simple Edge"
+  checkSelectableLaws @(Edges TGraph) "Composed Edges"
 
   checkRelation "Eq for Simple Edge" (\(x :: Edges (Character -: Relation :-> Character)) y -> x == y)
   checkRelation "Eq for Composed Edges" (\(x :: Edges TGraph) y -> x == y)
@@ -35,24 +36,24 @@ spec = do
 
   describe "selectEdges" $ do
     it "should select everything" $
-      selectEdges proxy (everything Proxy) `shouldBe`
+      selectEdges everything `shouldBe`
         Identity allRes
 
     it "should select only Relation" $
-      selectEdges proxy (EProd (everything Proxy) (nothing Proxy)) `shouldBe`
+      selectEdges (EProd everything nothing) `shouldBe`
         Identity onlyRelation
 
     it "should select only FriendsWith" $
-      selectEdges proxy selectFriends `shouldBe`
+      selectEdges selectFriends `shouldBe`
         Identity onlyFriends
 
-checkSelectableLaws :: (Arbitrary a, Selectable a, Show a) => Proxy a -> String -> Spec
-checkSelectableLaws proxy name =
+checkSelectableLaws :: forall a. (Arbitrary a, Selectable a, Show a) => String -> Spec
+checkSelectableLaws name =
   describe ("Selectable Type Laws (" ++ name ++ ")") $ do
     it "everything should validate everything" $ property $
-      select (everything proxy)
+      select (everything @a)
     it "nothing should discard everything" $ property $
-      \x -> not $ select (nothing proxy) x
+      \x -> not $ select (nothing @a) x
 
 instance (Arbitrary (Id a), Arbitrary e, Arbitrary (Id b)) => Arbitrary (Edges (a -: e :-> b)) where
   arbitrary = Edge <$>  arbitrary <*> arbitrary <*> arbitrary
@@ -81,8 +82,8 @@ data BirthPlace = BirthPlace
 instance Selectable Relation where
   data Selector Relation = Is (Maybe [Relation])
 
-  nothing _ = Is (Just [])
-  everything _ = Is Nothing
+  nothing = Is (Just [])
+  everything = Is Nothing
 
   select (Is sel) x = maybe True (\rels -> x `elem` rels) sel
 
@@ -102,8 +103,8 @@ instance FromJSON Relation where
 instance Selectable BirthPlace where
   data Selector BirthPlace = SelectBirthPlace | NoBirthPlace
 
-  nothing _ = NoBirthPlace
-  everything _ = SelectBirthPlace
+  nothing = NoBirthPlace
+  everything = SelectBirthPlace
 
   select SelectBirthPlace _ = True
   select _ _                = False
@@ -148,19 +149,16 @@ onlyFriends = [ ELeft (Edge "Tom" FriendsWith "Max")
               ]
 
 selectFriends :: Selector (Edges TGraph)
-selectFriends = EProd (ES Nothing (Is (Just [FriendsWith])) Nothing) (nothing Proxy)
-
-proxy :: Proxy TGraph
-proxy = Proxy
+selectFriends = EProd (ES Nothing (Is (Just [FriendsWith])) Nothing) nothing
 
 instance Named (Character -: Relation :-> Character) where
-  name _ = "RELATION"
+  name = "RELATION"
 
 instance Named (Character -: BirthPlace :-> Location) where
-  name _ = "BIRTH"
+  name = "BIRTH"
 
 instance GraphMonad (Character -: Relation :-> Character) Identity where
-  selectEdges _ sel = pure $ selects sel relations
+  selectEdges sel = pure $ selects sel relations
 
 instance GraphMonad (Character -: BirthPlace :-> Location) Identity where
-  selectEdges _ sel = pure $ selects sel birthPlaces
+  selectEdges sel = pure $ selects sel birthPlaces
