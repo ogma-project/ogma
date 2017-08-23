@@ -1,8 +1,8 @@
 {-|
-Module: Web.Ogma.Resource
-Copyright: Ogma Project 2016–2017
-License: AGPL-3
-Stability: experimental
+Module:     Web.Ogma.Resource
+Copyright:  Ogma Project 2016–2017
+License:    AGPL-3
+Stability:  experimental
 
 This module provides a set of typeclasses to work with the resources exposed by
 the library. The main idea is to derive an API specifications and servers.
