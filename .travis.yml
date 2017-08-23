@@ -36,18 +36,9 @@ matrix:
       compiler: ": #stack 8.0.2"
       addons: {apt: {packages: [ghc-8.0.2], sources: [hvr-ghc]}}
 
-    - env: BUILD=stack GHCVER=8.0.2 STACK_YAML=stack.yaml
-      compiler: ": #stack 8.0.2 osx"
-      os: osx
-
     - env: BUILD=style GHCVER=8.0.2 STACK_YAML=stack.yaml
       compiler: ": #stack 8.0.2"
       addons: {apt: {packages: [ghc-8.0.2], sources: [hvr-ghc]}}
-
-  allow_failures:
-    - env: BUILD=stack GHCVER=8.0.2 STACK_YAML=stack.yaml
-      compiler: ": #stack 8.0.2 osx"
-      os: osx
 
 before_install:
   # Using compiler above sets CC to an invalid value, so unset it
