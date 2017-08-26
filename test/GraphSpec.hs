@@ -15,21 +15,23 @@ import           Data.Aeson
 import           Data.List              (intersect, union)
 import           Test.Hspec             (Spec, describe, it, shouldBe)
 import           Test.QuickCheck        (Arbitrary (arbitrary), oneof, property)
+
+import           Web.Ogma.Graph
 import           Web.Ogma.Resource
 
 import           Shared
 
 spec :: Spec
 spec = do
-  checkSelectableLaws @(Edges (Character -: Relation :-> Character)) "Simple Edge"
+  checkSelectableLaws @(Edges (Character :- Relation :-> Character)) "Simple Edge"
   checkSelectableLaws @(Edges TGraph) "Composed Edges"
 
-  checkRelation "Eq for Simple Edge" (\(x :: Edges (Character -: Relation :-> Character)) y -> x == y)
+  checkRelation "Eq for Simple Edge" (\(x :: Edges (Character :- Relation :-> Character)) y -> x == y)
   checkRelation "Eq for Composed Edges" (\(x :: Edges TGraph) y -> x == y)
 
   describe "Aeson instances (Simple Edge)" $
     it "should be inverse functions of each other" $ property $
-      \x -> (fromJSON . toJSON) x == Success (x ::Edges (Character -: Relation :-> Character))
+      \x -> (fromJSON . toJSON) x == Success (x ::Edges (Character :- Relation :-> Character))
 
   describe "Aeson instances (Composed Edges)" $
     it "should be inverse functions of each other" $ property $
@@ -58,10 +60,10 @@ checkSelectableLaws name =
     it "select both" $ property $
       \x y z -> select (both @a y z) x --> (select y x && select z x)
 
-instance (Arbitrary (Id a), Arbitrary (Selector e), Arbitrary (Id b)) => Arbitrary (Selector (Edges (a -: e :-> b))) where
+instance (Arbitrary (Id a), Arbitrary (Selector e), Arbitrary (Id b)) => Arbitrary (Selector (Edges (a :- e :-> b))) where
   arbitrary = ES <$>  arbitrary <*> arbitrary <*> arbitrary
 
-instance (Arbitrary (Id a), Arbitrary e, Arbitrary (Id b)) => Arbitrary (Edges (a -: e :-> b)) where
+instance (Arbitrary (Id a), Arbitrary e, Arbitrary (Id b)) => Arbitrary (Edges (a :- e :-> b)) where
   arbitrary = Edge <$>  arbitrary <*> arbitrary <*> arbitrary
 
 instance (Arbitrary (Selector (Edges s)), Arbitrary (Selector (Edges s'))) => Arbitrary (Selector (Edges (s :<>: s'))) where
@@ -143,14 +145,14 @@ instance FromJSON BirthPlace where
 instance Arbitrary (Selector BirthPlace) where
   arbitrary = oneof [ pure SelectBirthPlace, pure NoBirthPlace ]
 
-relations :: [Edges (Character -: Relation :-> Character)]
+relations :: [Edges (Character :- Relation :-> Character)]
 relations = [Edge "Tom" FriendsWith "Max", Edge "Max" WorksFor "Peter", Edge "Max" FriendsWith "Peter"]
 
-birthPlaces :: [Edges (Character -: BirthPlace :-> Location)]
+birthPlaces :: [Edges (Character :- BirthPlace :-> Location)]
 birthPlaces = [Edge "Tom" BirthPlace "NYC", Edge "Peter" BirthPlace "London", Edge "Max" BirthPlace "London"]
 
-type TGraph = (Character -: Relation :-> Character)
-         :<>: (Character -: BirthPlace :-> Location)
+type TGraph = (Character :- Relation :-> Character)
+         :<>: (Character :- BirthPlace :-> Location)
 
 allRes :: [Edges TGraph]
 allRes = [ ELeft (Edge "Tom" FriendsWith "Max")
@@ -175,14 +177,14 @@ onlyFriends = [ ELeft (Edge "Tom" FriendsWith "Max")
 selectFriends :: Selector (Edges TGraph)
 selectFriends = EProd (ES Nothing (Is (Just [FriendsWith])) Nothing) nothing
 
-instance Named (Character -: Relation :-> Character) where
+instance Named (Character :- Relation :-> Character) where
   name = "RELATION"
 
-instance Named (Character -: BirthPlace :-> Location) where
+instance Named (Character :- BirthPlace :-> Location) where
   name = "BIRTH"
 
-instance GraphMonad (Character -: Relation :-> Character) Identity where
+instance GraphMonad (Character :- Relation :-> Character) Identity where
   selectEdges sel = pure $ selects sel relations
 
-instance GraphMonad (Character -: BirthPlace :-> Location) Identity where
+instance GraphMonad (Character :- BirthPlace :-> Location) Identity where
   selectEdges sel = pure $ selects sel birthPlaces
